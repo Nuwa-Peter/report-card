@@ -1,11 +1,6 @@
 <?php
-// ... (session_start, autoloader, helper functions - unchanged from previous version of process_excel.php)
-// The existing helper functions (getGradeFromScore, getRemarkFromScore, getPointsFromGrade) are still useful
-// as P1-P3 reports will also show individual subject grades/remarks, even if not used for ranking.
-// getDivisionAndStatus_P4_P7 is specific to P4-P7 and won't be used for P1-P3.
-
 session_start();
-
+// Ensure vendor/autoload.php exists
 if (!file_exists('vendor/autoload.php')) {
     $_SESSION['error_message'] = 'Composer dependencies not installed. Please run "composer install".';
     header('Location: index.php');
@@ -13,71 +8,20 @@ if (!file_exists('vendor/autoload.php')) {
 }
 require 'vendor/autoload.php';
 
+// Ensure db_connection.php exists
+if (!file_exists('db_connection.php')) {
+    // This is a critical internal error, should not happen if files are deployed correctly.
+    $_SESSION['error_message'] = 'Database connection file missing. Please contact administrator.';
+    header('Location: index.php');
+    exit;
+}
+require 'db_connection.php'; // Provides $pdo and findOrCreateLookup function
+
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
-// --- HELPER FUNCTIONS (getGradeFromScore, getRemarkFromScore, getPointsFromGrade - assume they are here and correct) ---
-function getGradeFromScore($score) {
-    if ($score === null || $score === '' || $score === 'N/A' || !is_numeric($score)) return 'N/A';
-    $score = floatval($score);
-    if ($score > 100 || $score < 0) return 'N/A';
-    if ($score >= 90) return 'D1';
-    if ($score >= 80) return 'D2';
-    if ($score >= 70) return 'C3';
-    if ($score >= 60) return 'C4';
-    if ($score >= 55) return 'C5';
-    if ($score >= 50) return 'C6';
-    if ($score >= 45) return 'P7';
-    if ($score >= 40) return 'P8';
-    return 'F9';
-}
-
-function getRemarkFromScore($score, $remarksMap) {
-    if ($score === null || $score === '' || $score === 'N/A' || !is_numeric($score)) return 'N/A';
-    $score = floatval($score);
-    if ($score < 0 || $score > 100) return 'N/A';
-    krsort($remarksMap);
-    foreach ($remarksMap as $minScore => $remark) {
-        if ($score >= $minScore) return $remark;
-    }
-    return 'Fail';
-}
-
-function getPointsFromGrade($grade, $gradingScalePoints) {
-    return isset($gradingScalePoints[$grade]) ? $gradingScalePoints[$grade] : 0;
-}
-
-function getDivisionAndStatus_P4_P7($studentSubjectsData, $coreSubjectKeysP4_P7, $gradingScalePointsMap) {
-    $aggregatePoints = 0;
-    $coreEOTMissingCount = 0;
-    $validCoreEOTScoresExist = false;
-
-    foreach ($coreSubjectKeysP4_P7 as $coreSubKey) {
-        $subjectInfo = $studentSubjectsData[$coreSubKey] ?? null;
-        if ($subjectInfo && isset($subjectInfo['eot']) && $subjectInfo['eot'] !== 'N/A' && is_numeric($subjectInfo['eot'])) {
-            $validCoreEOTScoresExist = true;
-            $eotGrade = getGradeFromScore($subjectInfo['eot']);
-            $aggregatePoints += getPointsFromGrade($eotGrade, $gradingScalePointsMap);
-        } else {
-            $coreEOTMissingCount++;
-        }
-    }
-
-    if (!$validCoreEOTScoresExist && $coreEOTMissingCount === count($coreSubjectKeysP4_P7)) {
-        return ['division' => 'Division X', 'aggregate_points' => 0];
-    }
-
-    if ($aggregatePoints >= 35 && $aggregatePoints <= 36) return ['division' => 'Grade U', 'aggregate_points' => $aggregatePoints];
-    if ($aggregatePoints >= 30 && $aggregatePoints <= 34) return ['division' => 'Division Four', 'aggregate_points' => $aggregatePoints];
-    if ($aggregatePoints >= 24 && $aggregatePoints <= 29) return ['division' => 'Division Three', 'aggregate_points' => $aggregatePoints];
-    if ($aggregatePoints >= 13 && $aggregatePoints <= 23) return ['division' => 'Division Two', 'aggregate_points' => $aggregatePoints];
-    if ($aggregatePoints >= 4 && $aggregatePoints <= 12) return ['division' => 'Division One', 'aggregate_points' => $aggregatePoints];
-
-    return ['division' => 'Ungraded', 'aggregate_points' => $aggregatePoints];
-}
-
-
-// --- Main Processing Logic (largely same as before until P1-P3 specific calculations) ---
-$_SESSION['report_data'] = null;
+// Clear previous messages
+$_SESSION['error_message'] = null;
+$_SESSION['success_message'] = null;
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     $_SESSION['error_message'] = 'Invalid request method.';
@@ -85,208 +29,175 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-$selectedClass = htmlspecialchars($_POST['class_selection'] ?? '');
-$year = htmlspecialchars($_POST['year'] ?? '');
-$term = htmlspecialchars($_POST['term'] ?? '');
+// --- Form Data Retrieval ---
+$selectedClassValue = htmlspecialchars($_POST['class_selection'] ?? '');
+$yearValue = htmlspecialchars($_POST['year'] ?? '');
+$termValue = htmlspecialchars($_POST['term'] ?? '');
 $termEndDate = htmlspecialchars($_POST['term_end_date'] ?? '');
 $nextTermBeginDate = htmlspecialchars($_POST['next_term_begin_date'] ?? '');
+$teacherInitialsFromForm = $_POST['teacher_initials'] ?? [];
 
-$classInfo = compact('selectedClass', 'year', 'term', 'termEndDate', 'nextTermBeginDate');
-
-$teacherInitials = [];
-if (isset($_POST['teacher_initials']) && is_array($_POST['teacher_initials'])) {
-    foreach ($_POST['teacher_initials'] as $subject => $initial) {
-        $teacherInitials[htmlspecialchars($subject)] = htmlspecialchars($initial);
-    }
-}
-$generalRemarks = [
-    'class_teacher' => htmlspecialchars($_POST['class_teacher_remarks'] ?? ''),
-    'head_teacher' => htmlspecialchars($_POST['head_teacher_remarks'] ?? ''),
-];
-
-if (empty($selectedClass) || empty($year) || empty($term) || empty($termEndDate) || empty($nextTermBeginDate)) {
+if (empty($selectedClassValue) || empty($yearValue) || empty($termValue) || empty($termEndDate) || empty($nextTermBeginDate)) {
     $_SESSION['error_message'] = 'Class, Year, Term, Term End Date, and Next Term Begin Date are required.';
     header('Location: index.php');
     exit;
 }
 
-$expectedSubjectKeys = [];
-$requiredSubjectKeys = [];
-$coreSubjectKeysP4_P7 = [];
-$p1p3SubjectKeys = []; // Define P1-P3 subject keys
-
-$isP4_P7 = in_array($selectedClass, ['P4', 'P5', 'P6', 'P7']);
-$isP1_P3 = in_array($selectedClass, ['P1', 'P2', 'P3']);
+// Determine expected and required subjects based on class
+$isP4_P7 = in_array($selectedClassValue, ['P4', 'P5', 'P6', 'P7']);
+$isP1_P3 = in_array($selectedClassValue, ['P1', 'P2', 'P3']);
+$expectedSubjectInternalKeys = [];
+$requiredSubjectInternalKeys = [];
 
 if ($isP4_P7) {
-    $expectedSubjectKeys = ['english', 'mtc', 'science', 'sst', 'kiswahili'];
-    $requiredSubjectKeys = ['english', 'mtc', 'science', 'sst'];
-    $coreSubjectKeysP4_P7 = ['english', 'mtc', 'science', 'sst'];
+    $expectedSubjectInternalKeys = ['english', 'mtc', 'science', 'sst', 'kiswahili'];
+    $requiredSubjectInternalKeys = ['english', 'mtc', 'science', 'sst'];
 } elseif ($isP1_P3) {
-    $p1p3SubjectKeys = ['english', 'mtc', 're', 'lit1', 'lit2', 'local_lang'];
-    $expectedSubjectKeys = $p1p3SubjectKeys;
-    $requiredSubjectKeys = $p1p3SubjectKeys;
+    $expectedSubjectInternalKeys = ['english', 'mtc', 're', 'lit1', 'lit2', 'local_lang'];
+    $requiredSubjectInternalKeys = $expectedSubjectInternalKeys;
 } else {
-    $_SESSION['error_message'] = 'Invalid class selected: ' . $selectedClass;
+    $_SESSION['error_message'] = 'Invalid class selected: ' . $selectedClassValue;
     header('Location: index.php');
     exit;
 }
 
-$studentsData = [];
 $uploadedFiles = $_FILES['subject_files'];
-
-// Check required files
-foreach ($requiredSubjectKeys as $reqKey) {
+foreach ($requiredSubjectInternalKeys as $reqKey) {
     if (!isset($uploadedFiles['tmp_name'][$reqKey]) || $uploadedFiles['error'][$reqKey] !== UPLOAD_ERR_OK) {
-        $_SESSION['error_message'] = ucfirst(str_replace('_', ' ', $reqKey)) . " file is required for class " . $selectedClass . ". Error: " . ($uploadedFiles['error'][$reqKey] ?? 'Unknown');
+        $_SESSION['error_message'] = ucfirst(str_replace('_', ' ', $reqKey)) . " file is required for class " . $selectedClassValue . ". Error code: " .($uploadedFiles['error'][$reqKey] ?? 'N/A');
         header('Location: index.php');
         exit;
     }
 }
 
-$gradingScalePointsMap = ['D1'=>1, 'D2'=>2, 'C3'=>3, 'C4'=>4, 'C5'=>5, 'C6'=>6, 'P7'=>7, 'P8'=>8, 'F9'=>9, 'N/A'=>0];
-$remarksScoreMap = [90=>'Outstanding', 80=>'Very Good', 70=>'Good', 60=>'Fair', 55=>'Satisfactory', 50=>'Average', 45=>'Pass', 40=>'Low Pass', 0=>'Fail'];
+$pdo->beginTransaction();
+try {
+    $academicYearId = findOrCreateLookup($pdo, 'academic_years', 'year_name', $yearValue);
+    $termId = findOrCreateLookup($pdo, 'terms', 'term_name', $termValue);
+    $classId = findOrCreateLookup($pdo, 'classes', 'class_name', $selectedClassValue);
 
-foreach ($expectedSubjectKeys as $subjectInternalKey) {
-    // Handle optional Kiswahili for P4-P7
-    if ($isP4_P7 && $subjectInternalKey === 'kiswahili' && (!isset($uploadedFiles['tmp_name'][$subjectInternalKey]) || $uploadedFiles['error'][$subjectInternalKey] === UPLOAD_ERR_NO_FILE)) {
-        continue;
-    }
-    if (!isset($uploadedFiles['tmp_name'][$subjectInternalKey]) || $uploadedFiles['error'][$subjectInternalKey] !== UPLOAD_ERR_OK) {
-        // Should have been caught by required check if it was required. This handles if logic changes or for truly optional subjects.
-        continue;
+    $stmtBatch = $pdo->prepare("SELECT id FROM report_batch_settings WHERE academic_year_id = :year_id AND term_id = :term_id AND class_id = :class_id");
+    $stmtBatch->execute([':year_id' => $academicYearId, ':term_id' => $termId, ':class_id' => $classId]);
+    $reportBatchId = $stmtBatch->fetchColumn();
+
+    if ($reportBatchId) { // Batch exists, update it
+        $stmtUpdateBatch = $pdo->prepare("UPDATE report_batch_settings SET term_end_date = :term_end, next_term_begin_date = :next_term_begin, import_date = CURRENT_TIMESTAMP WHERE id = :id");
+        $stmtUpdateBatch->execute([
+            ':term_end' => $termEndDate,
+            ':next_term_begin' => $nextTermBeginDate,
+            ':id' => $reportBatchId
+        ]);
+        // Optionally, consider deleting old scores for this batch before re-importing
+        $stmtDeleteOldScores = $pdo->prepare("DELETE FROM scores WHERE report_batch_id = :batch_id");
+        $stmtDeleteOldScores->execute([':batch_id' => $reportBatchId]);
+        // Also delete old student_report_summary for this batch
+        $stmtDeleteOldSummaries = $pdo->prepare("DELETE FROM student_report_summary WHERE report_batch_id = :batch_id");
+        $stmtDeleteOldSummaries->execute([':batch_id' => $reportBatchId]);
+
+
+    } else { // Batch does not exist, insert it
+        $stmtInsertBatch = $pdo->prepare("INSERT INTO report_batch_settings (academic_year_id, term_id, class_id, term_end_date, next_term_begin_date) VALUES (:year_id, :term_id, :class_id, :term_end, :next_term_begin)");
+        $stmtInsertBatch->execute([
+            ':year_id' => $academicYearId,
+            ':term_id' => $termId,
+            ':class_id' => $classId,
+            ':term_end' => $termEndDate,
+            ':next_term_begin' => $nextTermBeginDate
+        ]);
+        $reportBatchId = $pdo->lastInsertId();
     }
 
-    $filePath = $uploadedFiles['tmp_name'][$subjectInternalKey];
-    try {
+    if (!$reportBatchId) {
+        throw new Exception("Could not create or retrieve report batch ID.");
+    }
+
+    foreach ($expectedSubjectInternalKeys as $subjectInternalKey) {
+        if (!isset($uploadedFiles['tmp_name'][$subjectInternalKey]) || $uploadedFiles['error'][$subjectInternalKey] !== UPLOAD_ERR_OK) {
+            if (in_array($subjectInternalKey, $requiredSubjectInternalKeys)) {
+                throw new Exception("Required file for " . $subjectInternalKey . " missing unexpectedly during processing loop.");
+            }
+            continue;
+        }
+
+        $filePath = $uploadedFiles['tmp_name'][$subjectInternalKey];
         $spreadsheet = IOFactory::load($filePath);
         $sheet = $spreadsheet->getActiveSheet();
-        $subjectNameFromFileCell = $sheet->getCellByColumnAndRow(1, 1)->getValue();
-        $subjectDisplayName = !empty($subjectNameFromFileCell) ? trim(strval($subjectNameFromFileCell)) : ucfirst($subjectInternalKey);
+
+        $subjectNameFromFile = trim(strval($sheet->getCell('A1')->getValue()));
+        if (empty($subjectNameFromFile)) {
+            throw new Exception("Subject name missing in Cell A1 for uploaded file keyed as '" . $subjectInternalKey . "'. Please ensure A1 contains the subject name (e.g., ENGLISH).");
+        }
+
+        // Use subject_code for internal key, subject_name_full for display name from file
+        $subjectId = findOrCreateLookup($pdo, 'subjects', 'subject_code', $subjectInternalKey, ['subject_name_full' => $subjectNameFromFile]);
+
+        $headerBOT = trim(strval($sheet->getCell('B1')->getValue()));
+        $headerMOT = trim(strval($sheet->getCell('C1')->getValue()));
+        $headerEOT = trim(strval($sheet->getCell('D1')->getValue()));
+        if (strtoupper($headerBOT) !== 'BOT' || strtoupper($headerMOT) !== 'MOT' || strtoupper($headerEOT) !== 'EOT') {
+            throw new Exception("Invalid headers in Excel file for '" . $subjectNameFromFile . "'. Expected 'BOT', 'MOT', 'EOT' in cells B1, C1, D1 respectively.");
+        }
+
         $highestRow = $sheet->getHighestDataRow();
+        if ($highestRow < 2) { // Row 1 is headers/subj name, so data starts at row 2
+             $_SESSION['error_message'] = "Warning: No student data found in file for " . $subjectNameFromFile . " (File keyed as " . $subjectInternalKey . "). It might be empty or incorrectly formatted after row 1.";
+             // This is a warning, not a fatal error for this file, allow other files to process.
+             continue;
+        }
 
-        if ($highestRow < 3) continue;
 
-        for ($row = 3; $row <= $highestRow; $row++) {
-            $studentName = trim(strval($sheet->getCell('A' . $row)->getValue()));
-            if (empty($studentName)) continue;
+        for ($row = 2; $row <= $highestRow; $row++) { // Data rows start from 2
+            $studentNameRaw = trim(strval($sheet->getCell('A' . $row)->getValue()));
+            if (empty($studentNameRaw)) continue;
+            $studentNameAllCaps = strtoupper($studentNameRaw);
 
-            if (!isset($studentsData[$studentName])) {
-                $studentsData[$studentName] = ['name' => $studentName, 'subjects' => []];
+            $stmtStudent = $pdo->prepare("SELECT id FROM students WHERE student_name = :name");
+            $stmtStudent->execute([':name' => $studentNameAllCaps]);
+            $studentId = $stmtStudent->fetchColumn();
+            if (!$studentId) {
+                $stmtInsertStudent = $pdo->prepare("INSERT INTO students (student_name, current_class_id) VALUES (:name, :class_id)");
+                $stmtInsertStudent->execute([':name' => $studentNameAllCaps, ':class_id' => $classId]); // Associate with current batch's class
+                $studentId = $pdo->lastInsertId();
+            } else {
+                $stmtUpdateStudentClass = $pdo->prepare("UPDATE students SET current_class_id = :class_id WHERE id = :id AND (current_class_id IS NULL OR current_class_id != :class_id)");
+                $stmtUpdateStudentClass->execute([':class_id' => $classId, ':id' => $studentId]);
             }
 
-            $botScoreRaw = $sheet->getCell('B' . $row)->getValue();
-            $motScoreRaw = $sheet->getCell('C' . $row)->getValue();
-            $eotScoreRaw = $sheet->getCell('D' . $row)->getValue();
+            $botScore = $sheet->getCell('B' . $row)->getValue();
+            $motScore = $sheet->getCell('C' . $row)->getValue();
+            $eotScore = $sheet->getCell('D' . $row)->getValue();
 
-            $botScore = ($botScoreRaw !== null && (string)$botScoreRaw !== '' && is_numeric($botScoreRaw)) ? floatval($botScoreRaw) : 'N/A';
-            $motScore = ($motScoreRaw !== null && (string)$motScoreRaw !== '' && is_numeric($motScoreRaw)) ? floatval($motScoreRaw) : 'N/A';
-            $eotScore = ($eotScoreRaw !== null && (string)$eotScoreRaw !== '' && is_numeric($eotScoreRaw)) ? floatval($eotScoreRaw) : 'N/A';
-
-            $eotGrade = getGradeFromScore($eotScore);
-
-            $studentsData[$studentName]['subjects'][$subjectInternalKey] = [
-                'subject_display_name' => $subjectDisplayName,
-                'bot' => $botScore, 'bot_grade' => getGradeFromScore($botScore),
-                'mot' => $motScore, 'mot_grade' => getGradeFromScore($motScore),
-                'eot' => $eotScore, 'eot_grade' => $eotGrade,
-                'eot_points' => ($isP4_P7) ? getPointsFromGrade($eotGrade, $gradingScalePointsMap) : null, // Points only relevant for P4-P7 aggregates
-                'remarks' => getRemarkFromScore($eotScore, $remarksScoreMap),
-            ];
+            $sqlScore = "INSERT INTO scores (student_id, subject_id, report_batch_id, bot_score, mot_score, eot_score)
+                         VALUES (:student_id, :subject_id, :report_batch_id, :bot, :mot, :eot)
+                         ON DUPLICATE KEY UPDATE
+                            bot_score = VALUES(bot_score),
+                            mot_score = VALUES(mot_score),
+                            eot_score = VALUES(eot_score)";
+            $stmtScore = $pdo->prepare($sqlScore);
+            $stmtScore->execute([
+                ':student_id' => $studentId,
+                ':subject_id' => $subjectId,
+                ':report_batch_id' => $reportBatchId,
+                ':bot' => (is_numeric($botScore) ? (float)$botScore : null),
+                ':mot' => (is_numeric($motScore) ? (float)$motScore : null),
+                ':eot' => (is_numeric($eotScore) ? (float)$eotScore : null)
+            ]);
         }
-    } catch (\Exception $e) {
-        $_SESSION['error_message'] = "Error processing " . ucfirst($subjectInternalKey) . " file: " . $e->getMessage();
-        header('Location: index.php');
-        exit;
-    }
+    } // End foreach subject file
+
+    $pdo->commit();
+    $_SESSION['success_message'] = 'Data imported successfully for class ' . $selectedClassValue . ' (Batch ID: ' . $reportBatchId . '). Ready to generate reports.';
+    $_SESSION['current_teacher_initials'] = $teacherInitialsFromForm;
+    $_SESSION['last_processed_batch_id'] = $reportBatchId;
+
+} catch (PDOException $e) {
+    if ($pdo->inTransaction()) $pdo->rollBack();
+    $_SESSION['error_message'] = "Database error during import: " . $e->getMessage() . " (Line: " . $e->getLine() . ")";
+} catch (Exception $e) {
+    if ($pdo->inTransaction()) $pdo->rollBack();
+    $_SESSION['error_message'] = "Processing error during import: " . $e->getMessage() . " (Line: " . $e->getLine() . ")";
 }
 
-if (empty($studentsData)) {
-    $_SESSION['error_message'] = 'No student data processed. Check Excel files and class selection.';
-    header('Location: index.php');
-    exit;
-}
-
-// Post-processing
-$totalStudentsInClass = count($studentsData);
-
-foreach ($studentsData as $studentName => &$studentDetails) {
-    // Ensure all expected subjects exist for structure, fill with N/A if missing
-    foreach ($expectedSubjectKeys as $expSubKey) {
-        if (!isset($studentDetails['subjects'][$expSubKey])) {
-            $studentDetails['subjects'][$expSubKey] = [
-                'subject_display_name' => ucfirst($expSubKey),
-                'bot' => 'N/A', 'bot_grade' => 'N/A', 'mot' => 'N/A', 'mot_grade' => 'N/A',
-                'eot' => 'N/A', 'eot_grade' => 'N/A',
-                'eot_points' => ($isP4_P7) ? 0 : null,
-                'remarks' => 'N/A',
-            ];
-        }
-    }
-
-    if ($isP4_P7) {
-        $divisionResult = getDivisionAndStatus_P4_P7($studentDetails['subjects'], $coreSubjectKeysP4_P7, $gradingScalePointsMap);
-        $studentDetails['aggregate_points_p4p7'] = $divisionResult['aggregate_points'];
-        $studentDetails['division_p4p7'] = $divisionResult['division'];
-    } elseif ($isP1_P3) {
-        $totalEotScore_P1P3 = 0;
-        $subjectsWithEot_P1P3 = 0;
-        foreach ($p1p3SubjectKeys as $p1p3SubKey) {
-            $eotScore = $studentDetails['subjects'][$p1p3SubKey]['eot'] ?? 'N/A';
-            if ($eotScore !== 'N/A' && is_numeric($eotScore)) {
-                $totalEotScore_P1P3 += floatval($eotScore);
-                $subjectsWithEot_P1P3++;
-            }
-        }
-        $studentDetails['total_eot_p1p3'] = $totalEotScore_P1P3;
-        $studentDetails['average_score_p1p3'] = ($subjectsWithEot_P1P3 > 0) ? round($totalEotScore_P1P3 / $subjectsWithEot_P1P3, 2) : 0;
-        // Placeholder for rank, will be calculated next
-        $studentDetails['position_p1p3'] = 0;
-    }
-}
-unset($studentDetails);
-
-
-// Calculate P1-P3 Ranks if applicable
-if ($isP1_P3 && !empty($studentsData)) {
-    $studentAverages = [];
-    foreach ($studentsData as $studentName => $details) {
-        $studentAverages[$studentName] = $details['average_score_p1p3'] ?? 0;
-    }
-    arsort($studentAverages, SORT_NUMERIC); // Sort by average score, descending
-
-    $rank_display = 0;
-    $previous_score = -1;
-    $students_processed_for_rank = 0;
-
-    foreach ($studentAverages as $studentName => $score) {
-        $students_processed_for_rank++;
-        if ($score != $previous_score) {
-            $rank_display = $students_processed_for_rank;
-        }
-        $studentsData[$studentName]['position_p1p3'] = $rank_display;
-        $previous_score = $score;
-    }
-}
-
-
-$_SESSION['report_data'] = [
-    'students' => $studentsData,
-    'class_info' => $classInfo,
-    'teacher_initials' => $teacherInitials,
-    'general_remarks' => $generalRemarks,
-    'grading_scale_points_map' => $gradingScalePointsMap,
-    'remarks_score_map' => $remarksScoreMap,
-    'grading_display_scale' => ['D1 (90-100)', 'D2 (80-89)', 'C3 (70-79)', 'C4 (60-69)', 'C5 (55-59)', 'C6 (50-54)', 'P7 (45-49)', 'P8 (40-44)', 'F9 (0-39)'],
-    'is_p4_p7' => $isP4_P7,
-    'is_p1_p3' => $isP1_P3,
-    'core_subjects_p4p7' => $isP4_P7 ? $coreSubjectKeysP4_P7 : [],
-    'p1p3_subject_keys' => $isP1_P3 ? $p1p3SubjectKeys : [],
-    'expected_subjects_for_class' => $expectedSubjectKeys,
-    'total_students_in_class' => $totalStudentsInClass
-];
-
-$_SESSION['success_message'] = 'Data processed successfully for class ' . $selectedClass . '. Ready to generate reports.';
 header('Location: index.php');
 exit;
 ?>
