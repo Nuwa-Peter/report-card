@@ -80,13 +80,13 @@ $subjectDisplayNames = [
 <body>
     <nav class="navbar navbar-light bg-light sticky-top shadow-sm">
         <div class="container-fluid">
-            <a class="navbar-brand" href="dashboard.php">
+            <a class="navbar-brand" href="index.php"> <!-- Corrected -->
                 <img src="images/logo.png" alt="Logo" width="30" height="30" class="d-inline-block align-text-top me-2" onerror="this.style.display='none';">
                 Maria Owembabazi P/S - Report System
             </a>
             <div>
-                <a href="index.php" class="btn btn-outline-primary me-2"><i class="fas fa-plus-circle"></i> Import Another Batch</a>
-                <a href="dashboard.php" class="btn btn-outline-secondary"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+                <a href="data_entry.php" class="btn btn-outline-primary me-2"><i class="fas fa-plus-circle"></i> Import Another Batch</a> <!-- Corrected -->
+                <a href="index.php" class="btn btn-outline-secondary"><i class="fas fa-arrow-left"></i> Back to Dashboard</a> <!-- Corrected -->
             </div>
         </div>
     </nav>
