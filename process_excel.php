@@ -198,6 +198,6 @@ try {
     $_SESSION['error_message'] = "Processing error during import: " . $e->getMessage() . " (Line: " . $e->getLine() . ")";
 }
 
-header('Location: index.php');
+header('Location: data_entry.php');
 exit;
 ?>
