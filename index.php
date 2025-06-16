@@ -133,30 +133,19 @@ date_default_timezone_set('Africa/Kampala'); // Or user's preferred timezone
                 <a href="index.php"><i class="fas fa-tachometer-alt"></i> Dashboard Home</a>
             </li>
             <li>
-                <a href="data_entry.php"><i class="fas fa-file-alt"></i> Generate New Reports</a>
+                <a href="download_template.php"><i class="fas fa-file-excel"></i> Download Marks Entry Template</a>
             </li>
             <li>
-                <a href="view_processed_data.php"><i class="fas fa-database"></i> View Processed Data</a> <!-- Placeholder link -->
+                <a href="data_entry.php"><i class="fas fa-edit"></i> Marks Entry</a> <!-- Was "Generate New Reports" -->
             </li>
             <li>
-                <a href="download_template.php"><i class="fas fa-file-excel"></i> Download Marks Template</a> <!-- Placeholder link -->
+                <a href="view_report_archives.php"><i class="fas fa-archive"></i> View Report Archives</a> <!-- New page, replaces old "View Processed Data" & "Report Archives" submenu -->
             </li>
             <li>
-                <a href="#reportManagementSubmenu" data-bs-toggle="collapse" aria-expanded="false" class="dropdown-toggle"><i class="fas fa-archive"></i> Report Archives</a>
-                <ul class="collapse list-unstyled" id="reportManagementSubmenu">
-                    <li><a href="#">View Saved P1-P3 Reports</a></li> <!-- Placeholder -->
-                    <li><a href="#">View Saved P4-P7 Reports</a></li> <!-- Placeholder -->
-                </ul>
+                <a href="summary_sheet.php"><i class="fas fa-chart-pie"></i> Summary Sheets</a> <!-- Direct link, summary_sheet.php handles batch selection -->
             </li>
             <li>
-                <a href="#summarySubmenu" data-bs-toggle="collapse" aria-expanded="false" class="dropdown-toggle"><i class="fas fa-chart-pie"></i> Summary Sheets</a>
-                <ul class="collapse list-unstyled" id="summarySubmenu">
-                    <li><a href="#">View P1-P3 Summaries</a></li> <!-- Placeholder -->
-                    <li><a href="#">View P4-P7 Summaries</a></li> <!-- Placeholder -->
-                </ul>
-            </li>
-            <li>
-                <a href="about.php"><i class="fas fa-info-circle"></i> About & Help</a> <!-- Placeholder link -->
+                <a href="about.php"><i class="fas fa-info-circle"></i> About & Help</a>
             </li>
         </ul>
     </nav>

@@ -1,91 +1,121 @@
 <?php
 session_start();
 
-// Check if Composer's autoloader exists
-if (!file_exists('vendor/autoload.php')) {
-    $_SESSION['error_message'] = 'Composer dependencies not installed. Please run "composer install". This is required for PDF generation.';
-    header('Location: index.php');
-    exit;
-}
+// Autoloader and DB Connection
+if (!file_exists('vendor/autoload.php')) { die('CRITICAL ERROR: Composer autoload file not found.'); }
 require 'vendor/autoload.php';
+if (!file_exists('db_connection.php')) { die('CRITICAL ERROR: Database connection file not found.'); }
+require_once 'db_connection.php'; // Provides $pdo
+if (!file_exists('dal.php')) { die('CRITICAL ERROR: Data Access Layer file not found.'); }
+require_once 'dal.php'; // Provides DAL functions
 
-if (!isset($_SESSION['report_data']) || empty($_SESSION['report_data']['students'])) {
-    $_SESSION['error_message'] = 'No report data found to generate PDF. Please process student data first.';
-    header('Location: index.php');
+// --- Input Validation ---
+if (!isset($_GET['batch_id']) || !filter_var($_GET['batch_id'], FILTER_VALIDATE_INT) || $_GET['batch_id'] <= 0) {
+    $_SESSION['error_message'] = 'Invalid or missing Batch ID for PDF generation.';
+    header('Location: index.php'); // Redirect to dashboard or appropriate error page
+    exit;
+}
+$batch_id = (int)$_GET['batch_id'];
+
+// --- Determine Output Mode ---
+$outputMode = 'D'; // Default to Download
+if (isset($_GET['output_mode']) && strtoupper($_GET['output_mode']) === 'I') {
+    $outputMode = 'I'; // Inline view
+}
+
+// --- Fetch Batch & Common Data ---
+$batchSettingsData = getReportBatchSettings($pdo, $batch_id);
+if (!$batchSettingsData) {
+    $_SESSION['error_message'] = 'Could not find settings for Batch ID: ' . htmlspecialchars($batch_id);
+    header('Location: view_processed_data.php?batch_id=' . $batch_id); // Or dashboard
     exit;
 }
 
-$reportData = $_SESSION['report_data'];
-$allStudentsData = $reportData['students'];
-$classInfo = $reportData['class_info'];
-// Other data like teacherInitials, generalRemarks, etc., will be accessed within the buffered report_card.php
+// Student IDs for the batch (fetch from student_report_summary as it implies calculations are done)
+$stmtStudentIds = $pdo->prepare("SELECT student_id FROM student_report_summary WHERE report_batch_id = :batch_id ORDER BY student_id");
+$stmtStudentIds->execute([':batch_id' => $batch_id]);
+$studentIdsInBatch = $stmtStudentIds->fetchAll(PDO::FETCH_COLUMN);
 
-// Prepare mPDF
-// Basic configuration, can be extended (e.g., for custom fonts)
-$mpdf = new \Mpdf\Mpdf([
-    'mode' => 'utf-8',
-    'format' => 'A4',
-    'margin_left' => 10,
-    'margin_right' => 10,
-    'margin_top' => 10,
-    'margin_bottom' => 10,
-    'margin_header' => 5,
-    'margin_footer' => 5,
-    'default_font_size' => 10,
-    'default_font' => 'arial' // Using a common font
-]);
-
-// It's often good to set a title for the PDF document
-$pdfFileName = 'Report_Cards_' . htmlspecialchars($classInfo['class'] ?? 'Class') . '_' . htmlspecialchars($classInfo['term'] ?? 'Term') . '_' . htmlspecialchars($classInfo['year'] ?? 'Year') . '.pdf';
-$mpdf->SetTitle('Report Cards - ' . htmlspecialchars($classInfo['class'] ?? '') . ' Term ' . htmlspecialchars($classInfo['term'] ?? '') . ' ' . htmlspecialchars($classInfo['year'] ?? ''));
-$mpdf->SetAuthor('Maria Owembabazi Primary School');
-// $mpdf->SetDisplayMode('fullpage'); // How the PDF opens
-
-// Loop through each student and generate their report card HTML
-foreach ($allStudentsData as $studentKey => $studentToDisplay) {
-    // Set up a variable that report_card.php can use to identify the current student
-    // This way, report_card.php doesn't need to know it's being called by generate_pdf.php
-    // We simulate the $_GET variable or pass it in a way report_card.php expects.
-
-    // To make report_card.php reusable, we'll pass the specific student data it needs.
-    // We'll capture the output of report_card.php
-    ob_start();
-
-    // Make $studentToDisplay available to the included file.
-    // Also, $reportData (containing classInfo, teacherInitials etc.) should be available.
-    // report_card.php already uses $studentToDisplay, $classInfo, $teacherInitials etc. from $reportData.
-    // We need to ensure report_card.php uses the *current* student in the loop.
-
-    // Temporarily set a global or pass a variable that report_card.php can check
-    // to know which student's data to use.
-    // Let's modify report_card.php slightly to accept a student's data directly as a parameter
-    // when included, rather than always picking the first from session.
-
-    // For now, we'll assume report_card.php is modified to use a variable $_CURRENT_STUDENT_FOR_PDF
-    // This is a bit of a hack. A cleaner way is to refactor report_card.php into a function.
-    $_SESSION['current_student_for_pdf_key'] = $studentKey; // Pass the key
-
-    include 'report_card.php'; // This will output the HTML for the current student
-
-    $html = ob_get_clean();
-    $mpdf->WriteHTML($html);
-
-    // Add a page break after each student, unless it's the last one
-    // mPDF handles page breaks with CSS (page-break-after: always in report_card.php style)
-    // but an explicit AddPage can be used if needed for more control.
-    // The CSS 'page-break-after: always' on the .report-card-container in report_card.php should handle this.
+if (empty($studentIdsInBatch)) {
+    $_SESSION['error_message'] = 'No students found with calculated summaries for Batch ID: ' . htmlspecialchars($batch_id) . '. Please run calculations first.';
+    header('Location: view_processed_data.php?batch_id=' . $batch_id);
+    exit;
 }
-unset($_SESSION['current_student_for_pdf_key']); // Clean up
 
-// Output the PDF
+$teacherInitials = $_SESSION['current_teacher_initials'] ?? [];
+
+$classNameForBatch = $batchSettingsData['class_name'];
+$isP4_P7_batch = in_array($classNameForBatch, ['P4', 'P5', 'P6', 'P7']);
+$isP1_P3_batch = in_array($classNameForBatch, ['P1', 'P2', 'P3']);
+$expectedSubjectKeysForClass = [];
+if ($isP4_P7_batch) {
+    $expectedSubjectKeysForClass = ['english', 'mtc', 'science', 'sst', 'kiswahili'];
+} elseif ($isP1_P3_batch) {
+    $expectedSubjectKeysForClass = ['english', 'mtc', 're', 'lit1', 'lit2', 'local_lang'];
+}
+
+$subjectDisplayNames = [
+    'english' => 'English', 'mtc' => 'Mathematics (MTC)', 'science' => 'Science',
+    'sst' => 'Social Studies (SST)', 'kiswahili' => 'Kiswahili',
+    're' => 'Religious Education (R.E)', 'lit1' => 'Literacy I',
+    'lit2' => 'Literacy II', 'local_lang' => 'Local Language'
+];
+$gradingScaleForP4P7Display = [
+    'D1' => '90-100', 'D2' => '80-89', 'C3' => '70-79', 'C4' => '60-69',
+    'C5' => '55-59', 'C6' => '50-54', 'P7' => '45-49', 'P8' => '40-44', 'F9' => '0-39'
+];
+
+// --- mPDF Initialization ---
 try {
-    $mpdf->Output($pdfFileName, 'D'); // 'D' for download, 'I' for inline
+    $mpdf = new \Mpdf\Mpdf([
+        'mode' => 'utf-8', 'format' => 'A4',
+        'margin_left' => 10, 'margin_right' => 10, 'margin_top' => 8, 'margin_bottom' => 8,
+        'margin_header' => 4, 'margin_footer' => 4, 'default_font_size' => 9.5,
+        'default_font' => 'helvetica'
+    ]);
+
+    $pdfFileName = 'Report_Cards_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $batchSettingsData['class_name']) . '_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $batchSettingsData['term_name']) . '_' . $batchSettingsData['year_name'] . '.pdf';
+    $mpdf->SetTitle('Report Cards - ' . $batchSettingsData['class_name'] . ' Term ' . $batchSettingsData['term_name'] . ' ' . $batchSettingsData['year_name']);
+    $mpdf->SetAuthor('Maria Owembabazi Primary School');
+    $mpdf->SetCreator('Report Card System');
+
+    // --- Loop Through Students & Generate HTML for Each Report ---
+    foreach ($studentIdsInBatch as $student_id) { // $student_id is now correctly defined for use here
+        $sessionKeyForEnrichedData = 'enriched_students_data_for_batch_' . $batch_id;
+        if (!isset($_SESSION[$sessionKeyForEnrichedData][$student_id])) {
+            throw new Exception("Enriched student data not found in session for student ID $student_id and batch ID $batch_id. Please run calculations first.");
+        }
+        $currentStudentEnrichedData = $_SESSION[$sessionKeyForEnrichedData][$student_id];
+
+        // $pdo, $batch_id, $student_id are defined.
+        // $currentStudentEnrichedData is fetched.
+        // $teacherInitials, $subjectDisplayNames, $gradingScaleForP4P7Display, $expectedSubjectKeysForClass are defined.
+        // These are all the variables report_card.php expects.
+
+        ob_start();
+        include 'report_card.php';
+        $html = ob_get_clean();
+        $mpdf->WriteHTML($html);
+    }
+
+    // Optional: Clear session data for this batch after PDF generation
+    // unset($_SESSION['enriched_students_data_for_batch_' . $batch_id]);
+
+    $mpdf->Output($pdfFileName, $outputMode);
     exit;
+
 } catch (\Mpdf\MpdfException $e) {
-    $_SESSION['error_message'] = "MPDF Error: " . $e->getMessage();
-    // Log the error properly in a real application
-    // error_log("MPDF Error: " . $e->getMessage());
-    header('Location: index.php');
+    // Ensure buffer is cleaned if mPDF exception occurs before output
+    if (ob_get_level() > 0) ob_end_clean();
+    $_SESSION['error_message'] = "mPDF Error generating PDF for Batch ID " . htmlspecialchars($batch_id) . ": " . $e->getMessage();
+} catch (Exception $e) {
+    if (ob_get_level() > 0) ob_end_clean();
+    $_SESSION['error_message'] = "General error generating PDF for Batch ID " . htmlspecialchars($batch_id) . ": " . $e->getMessage() . " (File: " . basename($e->getFile()) . ", Line: " . $e->getLine() . ")";
+}
+
+// If any error occurred and was caught, redirect back
+if(isset($_SESSION['error_message'])){ // Check if error message was set
+    header('Location: view_processed_data.php?batch_id=' . $batch_id);
     exit;
 }
 ?>

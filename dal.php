@@ -205,4 +205,73 @@ function saveStudentReportSummary(PDO $pdo, array $summaryData): bool {
 
 // More functions can be added here as needed, e.g., for fetching data for summary sheets,
 // specific student lookups, etc.
+
+/**
+ * Fetches a single student's report summary data (from student_report_summary)
+ * AND their basic details (name, lin_no from students table) for a given batch.
+ * @param PDO $pdo
+ * @param int $studentId
+ * @param int $reportBatchId
+ * @return array|false Associative array of the merged summary and student details, or false if not found.
+ */
+function getStudentSummaryAndDetailsForReport(PDO $pdo, int $studentId, int $reportBatchId): array|false {
+    $sql = "SELECT srs.*, s.student_name, s.lin_no
+            FROM student_report_summary srs
+            JOIN students s ON srs.student_id = s.id
+            WHERE srs.student_id = :student_id AND srs.report_batch_id = :report_batch_id";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([':student_id' => $studentId, ':report_batch_id' => $reportBatchId]);
+    return $stmt->fetch(); // Default is PDO::FETCH_ASSOC from db_connection.php
+}
+
+/**
+ * Fetches all student summaries for a given report batch ID.
+ * Includes student name via a JOIN.
+ * @param PDO $pdo
+ * @param int $reportBatchId
+ * @return array Array of student summary records, ordered by student name or position if available.
+ */
+function getAllStudentSummariesForBatchWithName(PDO $pdo, int $reportBatchId): array {
+    $sql = "SELECT srs.*, s.student_name
+            FROM student_report_summary srs
+            JOIN students s ON srs.student_id = s.id
+            WHERE srs.report_batch_id = :report_batch_id
+            ORDER BY s.student_name ASC"; // Default order, can be adjusted
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([':report_batch_id' => $reportBatchId]);
+    return $stmt->fetchAll();
+}
+
+/**
+ * Fetches all scores (including calculated grades per subject) for all students in a batch.
+ * This is more detailed than just the summary and might be needed for grade distribution counts.
+ * @param PDO $pdo
+ * @param int $reportBatchId
+ * @return array Array of score records.
+ */
+function getAllScoresWithGradesForBatch(PDO $pdo, int $reportBatchId): array {
+    $sql = "SELECT sc.*, s.subject_code, s.subject_name_full
+            FROM scores sc
+            JOIN subjects s ON sc.subject_id = s.id
+            WHERE sc.report_batch_id = :report_batch_id";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([':report_batch_id' => $reportBatchId]);
+    return $stmt->fetchAll();
+}
+
+/**
+ * Fetches a list of all processed report batches (class, year, term).
+ * @param PDO $pdo
+ * @return array List of distinct batches.
+ */
+function getAllProcessedBatches(PDO $pdo): array {
+    $sql = "SELECT DISTINCT rbs.id as batch_id, c.class_name, ay.year_name, t.term_name
+            FROM report_batch_settings rbs
+            JOIN classes c ON rbs.class_id = c.id
+            JOIN academic_years ay ON rbs.academic_year_id = ay.id
+            JOIN terms t ON rbs.term_id = t.id
+            ORDER BY ay.year_name DESC, t.term_name ASC, c.class_name ASC";
+    $stmt = $pdo->query($sql);
+    return $stmt->fetchAll();
+}
 ?>
