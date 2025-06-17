@@ -83,8 +83,18 @@ $teacherInitials = $teacherInitials ?? ($_SESSION['current_teacher_initials'] ??
     <link rel="icon" type="image/png" href="images/logo.png">
     <style>
         body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; margin: 0; padding: 0; background-color: #f0f0f0; font-size: 9.5pt; color: #000; }
-        .report-card-container { width: 190mm; min-height: 275mm; margin: 10mm auto; padding: 10mm; border: 1px solid #ccc; box-shadow: 0 0 8px rgba(0,0,0,0.1); background-color: white; position: relative; box-sizing: border-box; }
-        .watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.06; z-index: 0; pointer-events: none; width: 150mm; height: auto; }
+        .report-card-container {
+            width: 190mm;
+            min-height: 275mm;
+            margin: 10mm auto;
+            padding: 10mm;
+            border: 1px solid #ccc;
+            box-shadow: 0 0 8px rgba(0,0,0,0.1);
+            background-color: white;
+            position: relative;
+            box-sizing: border-box;
+        }
+        /* .watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.06; z-index: 0; pointer-events: none; width: 150mm; height: auto; } */
         .header { text-align: center; margin-bottom: 3.5mm; margin-top: 0; }
         .header .school-name { font-size: 20pt; font-weight: bold; margin: 0; color: #000; letter-spacing: 0.5px; }
         .header .logo-container { margin-top: 1.5mm; margin-bottom: 1.5mm; }
@@ -131,7 +141,7 @@ $teacherInitials = $teacherInitials ?? ($_SESSION['current_teacher_initials'] ??
 </head>
 <body>
     <div class="report-card-container">
-        <img src="images/logo.png" class="watermark" alt="School Watermark Logo" onerror="this.style.display='none';">
+        <!-- Ensure no img tag for watermark is here -->
         <div class="header">
             <div class="school-name"><?php echo htmlspecialchars("MARIA OWEMBABAZI PRIMARY SCHOOL"); ?></div>
             <div class="logo-container"><img src="images/logo.png" alt="School Logo" onerror="this.style.display='none';"></div>

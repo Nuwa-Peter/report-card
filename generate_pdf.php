@@ -74,6 +74,11 @@ try {
         'default_font' => 'helvetica'
     ]);
 
+    // --- Watermark Settings ---
+    $mpdf->SetWatermarkImage('images/logo.png', 0.06, 45, 'F'); // Opacity set to 0.06, Size set to 45mm width
+    $mpdf->showWatermarkImage = true;
+    // $mpdf->watermarkImageBehind = true; // This line was removed as it caused an error
+
     $pdfFileName = 'Report_Cards_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $batchSettingsData['class_name']) . '_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $batchSettingsData['term_name']) . '_' . $batchSettingsData['year_name'] . '.pdf';
     $mpdf->SetTitle('Report Cards - ' . $batchSettingsData['class_name'] . ' Term ' . $batchSettingsData['term_name'] . ' ' . $batchSettingsData['year_name']);
     $mpdf->SetAuthor('Maria Owembabazi Primary School');
