@@ -134,11 +134,18 @@ function saveStudentReportSummary(PDO $pdo, array $summaryData): bool {
     ]);
     $existingId = $stmtCheck->fetchColumn();
 
-    $fields = [ // Whitelist of fields in student_report_summary table (excluding id)
+    $fields = [
         'student_id', 'report_batch_id',
         'p4p7_aggregate_points', 'p4p7_division',
-        'p1p3_total_eot_score', 'p1p3_average_eot_score', 'p1p3_position_in_class', 'p1p3_total_students_in_class',
-        'auto_classteachers_remark_text', 'auto_headteachers_remark_text'
+        'p1p3_total_eot_score', 'p1p3_average_eot_score',
+        'p1p3_position_in_class', 'p1p3_total_students_in_class',
+        'auto_classteachers_remark_text', 'auto_headteachers_remark_text',
+        'p1p3_total_bot_score', 'p1p3_position_total_bot',
+        'p1p3_total_mot_score', 'p1p3_position_total_mot',
+        'p1p3_position_total_eot',
+        // ADDED/VERIFY New fields for P1-P3 overall BOT/MOT averages
+        'p1p3_average_bot_score',
+        'p1p3_average_mot_score'
     ];
 
     $dataToSave = [];

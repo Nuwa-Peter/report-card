@@ -21,149 +21,203 @@ if (!$batchSettings) {
 $isP4_P7 = in_array($batchSettings['class_name'], ['P4', 'P5', 'P6', 'P7']);
 $isP1_P3 = in_array($batchSettings['class_name'], ['P1', 'P2', 'P3']);
 
-// Define subject keys based on class type for calculations
 $coreSubjectKeysP4_P7 = [];
 $p1p3SubjectKeys = [];
+$expectedSubjectKeysForClass = [];
+
 if ($isP4_P7) {
     $coreSubjectKeysP4_P7 = ['english', 'mtc', 'science', 'sst'];
+    $expectedSubjectKeysForClass = ['english', 'mtc', 'science', 'sst', 'kiswahili'];
 } elseif ($isP1_P3) {
     $p1p3SubjectKeys = ['english', 'mtc', 're', 'lit1', 'lit2', 'local_lang'];
+    $expectedSubjectKeysForClass = $p1p3SubjectKeys;
 }
 
 $gradingScalePointsMap = ['D1'=>1, 'D2'=>2, 'C3'=>3, 'C4'=>4, 'C5'=>5, 'C6'=>6, 'P7'=>7, 'P8'=>8, 'F9'=>9, 'N/A'=>0];
-// Define the remarks score map for getSubjectEOTRemarkUtil - this was missing from the prompt but is needed.
-// Using the one from the old process_excel.php for now.
-$remarksScoreMap = [90=>'Outstanding', 80=>'Very Good', 70=>'Good', 60=>'Fair', 55=>'Satisfactory', 50=>'Average', 45=>'Pass', 40=>'Low Pass', 0=>'Fail'];
+$remarksScoreMap = [90=>'Outstanding', 80=>'Very Good', 70=>'Good', 60=>'Fair', 55=>'Satisfactory', 50=>'Average', 45=>'Pass', 40=>'Low Pass', 0=>'Fail', 'N/A' => 'N/A'];
 
-
-$studentsRawData = getStudentsWithScoresForBatch($pdo, $batch_id); // Keyed by student_id
+$studentsRawDataFromDB = getStudentsWithScoresForBatch($pdo, $batch_id);
 $processedStudentsSummaryData = [];
-// This array will hold the detailed per-subject calculated data for each student,
-// which report_card.php expects. This part was missing from previous considerations for run_calculations.
 $enrichedStudentDataForReportCard = [];
-
 
 $pdo->beginTransaction();
 try {
-    foreach ($studentsRawData as $studentId => $studentData) {
-        $studentPerformanceInputForRemarks = [];
-        $summaryData = [
+    foreach ($studentsRawDataFromDB as $studentId => $studentDataFromDB) {
+        $currentStudentSubjectsEnriched = [];
+        $studentPerformanceInputForOverallRemarks = [];
+
+        $summaryDataForDB = [
             'student_id' => $studentId,
             'report_batch_id' => $batch_id,
-            'p4p7_aggregate_points' => null,
-            'p4p7_division' => null,
-            'p1p3_total_eot_score' => null,
-            'p1p3_average_eot_score' => null,
-            'p1p3_position_in_class' => null,
-            'p1p3_total_students_in_class' => null,
-            'auto_classteachers_remark_text' => null,
-            'auto_headteachers_remark_text' => null
+            'p4p7_aggregate_points' => null, 'p4p7_division' => null,
+            'p1p3_total_eot_score' => null, 'p1p3_average_eot_score' => null,
+            'p1p3_position_in_class' => null, 'p1p3_total_students_in_class' => null,
+            'auto_classteachers_remark_text' => null, 'auto_headteachers_remark_text' => null,
+            'p1p3_total_bot_score' => null, 'p1p3_position_total_bot' => null,
+            'p1p3_total_mot_score' => null, 'p1p3_position_total_mot' => null,
+            'p1p3_position_total_eot' => null,
+            // Initialize new fields for P1-P3 overall BOT/MOT averages
+            'p1p3_average_bot_score' => null,
+            'p1p3_average_mot_score' => null
         ];
 
-        // Initialize structure for enriched data (for report_card.php)
-        $enrichedStudentDataForReportCard[$studentId] = $studentData; // copies name, lin_no, id
-        $enrichedStudentDataForReportCard[$studentId]['subjects'] = [];
+        $p1p3StudentTotalBot = 0; $p1p3SubjectsWithBot = 0;
+        $p1p3StudentTotalMot = 0; $p1p3SubjectsWithMot = 0;
+        $p1p3StudentTotalEotForAvgAndRank = 0;
+        $p1p3SubjectsWithEotForAvg = 0;
 
+        foreach ($expectedSubjectKeysForClass as $subjectKey) {
+            $subjectScores = $studentDataFromDB['subjects'][$subjectKey] ?? [
+                'subject_name_full' => ucfirst($subjectKey),
+                'bot_score' => 'N/A', 'mot_score' => 'N/A', 'eot_score' => 'N/A'
+            ];
 
-        // Calculate per-subject grades and remarks first
-        foreach ($studentData['subjects'] as $subjectCode => $subjectDetails) {
-            $eotScore = $subjectDetails['eot_score'] ?? 'N/A';
-            $botScore = $subjectDetails['bot_score'] ?? 'N/A';
-            $motScore = $subjectDetails['mot_score'] ?? 'N/A';
+            $botScore = $subjectScores['bot_score'] ?? 'N/A';
+            $motScore = $subjectScores['mot_score'] ?? 'N/A';
+            $eotScore = $subjectScores['eot_score'] ?? 'N/A';
 
-            $eotGrade = getGradeFromScoreUtil($eotScore);
-            $botGrade = getGradeFromScoreUtil($botScore);
-            $motGrade = getGradeFromScoreUtil($motScore);
-            $eotRemark = getSubjectEOTRemarkUtil($eotScore, $remarksScoreMap);
-            $eotPoints = ($isP4_P7) ? getPointsFromGradeUtil($eotGrade, $gradingScalePointsMap) : null;
+            $currentStudentSubjectsEnriched[$subjectKey] = [
+                'subject_name_full' => $subjectScores['subject_name_full'] ?? ucfirst($subjectKey),
+                'bot_score' => $botScore,
+                'bot_grade' => getGradeFromScoreUtil($botScore),
+                'mot_score' => $motScore,
+                'mot_grade' => getGradeFromScoreUtil($motScore),
+                'eot_score' => $eotScore,
+                'eot_grade' => getGradeFromScoreUtil($eotScore),
+                'eot_remark' => getSubjectEOTRemarkUtil($eotScore, $remarksScoreMap),
+                'eot_points' => ($isP4_P7) ? getPointsFromGradeUtil(getGradeFromScoreUtil($eotScore), $gradingScalePointsMap) : null
+            ];
 
-            // Store these calculated per-subject details for report_card.php
-            $enrichedStudentDataForReportCard[$studentId]['subjects'][$subjectCode] = array_merge(
-                $subjectDetails, // carries over raw scores, subject_id, subject_name_full
-                [
-                    'bot_grade' => $botGrade,
-                    'mot_grade' => $motGrade,
-                    'eot_grade' => $eotGrade,
-                    'eot_remark' => $eotRemark,
-                    'eot_points' => $eotPoints // Will be used by calculateP4P7OverallPerformanceUtil
-                ]
-            );
-        }
+            if ($isP1_P3) {
+                if (is_numeric($botScore) && $botScore !== 'N/A') {
+                    $p1p3StudentTotalBot += (float)$botScore;
+                    $p1p3SubjectsWithBot++;
+                }
+                if (is_numeric($motScore) && $motScore !== 'N/A') {
+                    $p1p3StudentTotalMot += (float)$motScore;
+                    $p1p3SubjectsWithMot++;
+                }
 
+                $validScoresForSubjectAvg = [];
+                if (is_numeric($botScore)) $validScoresForSubjectAvg[] = (float)$botScore;
+                if (is_numeric($motScore)) $validScoresForSubjectAvg[] = (float)$motScore;
+                if (is_numeric($eotScore)) $validScoresForSubjectAvg[] = (float)$eotScore;
 
-        if ($isP4_P7) {
-            // Pass the subjects array (which now contains eot_points) from the enriched data
-            $p4p7_results = calculateP4P7OverallPerformanceUtil($enrichedStudentDataForReportCard[$studentId]['subjects'], $coreSubjectKeysP4_P7);
-            $summaryData['p4p7_aggregate_points'] = $p4p7_results['p4p7_aggregate_points'];
-            $summaryData['p4p7_division'] = $p4p7_results['p4p7_division'];
+                if (count($validScoresForSubjectAvg) > 0) {
+                    $currentStudentSubjectsEnriched[$subjectKey]['subject_term_average'] = round(array_sum($validScoresForSubjectAvg) / count($validScoresForSubjectAvg), 1);
+                } else {
+                    $currentStudentSubjectsEnriched[$subjectKey]['subject_term_average'] = 'N/A';
+                }
 
-            $studentPerformanceInputForRemarks['p4p7_division'] = $summaryData['p4p7_division'];
-            $studentPerformanceInputForRemarks['p4p7_aggregate_points'] = $summaryData['p4p7_aggregate_points'];
-        } elseif ($isP1_P3) {
-            $totalEotScore = 0;
-            $subjectsWithEotCount = 0;
-            foreach ($p1p3SubjectKeys as $p1p3SubKey) {
-                $subjectInfo = $enrichedStudentDataForReportCard[$studentId]['subjects'][$p1p3SubKey] ?? null;
-                if ($subjectInfo && isset($subjectInfo['eot_score']) && $subjectInfo['eot_score'] !== 'N/A' && is_numeric($subjectInfo['eot_score'])) {
-                    $totalEotScore += floatval($subjectInfo['eot_score']);
-                    $subjectsWithEotCount++;
+                if (is_numeric($eotScore) && $eotScore !== 'N/A') {
+                    $p1p3StudentTotalEotForAvgAndRank += (float)$eotScore;
+                    $p1p3SubjectsWithEotForAvg++;
                 }
             }
-            $summaryData['p1p3_total_eot_score'] = $totalEotScore;
-            $averageScoreP1P3 = ($subjectsWithEotCount > 0) ? round($totalEotScore / $subjectsWithEotCount, 2) : 0;
-            $summaryData['p1p3_average_eot_score'] = $averageScoreP1P3;
+        }
+        $enrichedStudentDataForReportCard[$studentId] = [
+            'student_name' => $studentDataFromDB['student_name'],
+            'lin_no' => $studentDataFromDB['lin_no'],
+            'subjects' => $currentStudentSubjectsEnriched
+        ];
 
-            $studentPerformanceInputForRemarks['average_score_p1p3'] = $averageScoreP1P3;
+        if ($isP4_P7) {
+            $p4p7_results = calculateP4P7OverallPerformanceUtil($currentStudentSubjectsEnriched, $coreSubjectKeysP4_P7, $gradingScalePointsMap);
+            $summaryDataForDB['p4p7_aggregate_points'] = $p4p7_results['p4p7_aggregate_points'];
+            $summaryDataForDB['p4p7_division'] = $p4p7_results['p4p7_division'];
+            $studentPerformanceInputForOverallRemarks = $p4p7_results;
+        } elseif ($isP1_P3) {
+            $summaryDataForDB['p1p3_total_bot_score'] = $p1p3StudentTotalBot;
+            $summaryDataForDB['p1p3_average_bot_score'] = ($p1p3SubjectsWithBot > 0) ? round($p1p3StudentTotalBot / $p1p3SubjectsWithBot, 2) : 0; // NEW
+
+            $summaryDataForDB['p1p3_total_mot_score'] = $p1p3StudentTotalMot;
+            $summaryDataForDB['p1p3_average_mot_score'] = ($p1p3SubjectsWithMot > 0) ? round($p1p3StudentTotalMot / $p1p3SubjectsWithMot, 2) : 0; // NEW
+
+            $summaryDataForDB['p1p3_total_eot_score'] = $p1p3StudentTotalEotForAvgAndRank;
+            $avgEotP1P3 = ($p1p3SubjectsWithEotForAvg > 0) ? round($p1p3StudentTotalEotForAvgAndRank / $p1p3SubjectsWithEotForAvg, 2) : 0;
+            $summaryDataForDB['p1p3_average_eot_score'] = $avgEotP1P3;
+
+            // Populate for remarks (average EOT is primary for P1-P3 remarks)
+            $studentPerformanceInputForOverallRemarks['p1p3_average_eot_score'] = $avgEotP1P3;
         }
 
-        $summaryData['auto_classteachers_remark_text'] = generateClassTeacherRemarkUtil($studentPerformanceInputForRemarks, $isP4_P7);
-        $summaryData['auto_headteachers_remark_text'] = generateHeadTeacherRemarkUtil($studentPerformanceInputForRemarks, $isP4_P7);
+        $summaryDataForDB['auto_classteachers_remark_text'] = generateClassTeacherRemarkUtil($studentPerformanceInputForOverallRemarks, $isP4_P7);
+        $summaryDataForDB['auto_headteachers_remark_text'] = generateHeadTeacherRemarkUtil($studentPerformanceInputForOverallRemarks, $isP4_P7);
 
-        $processedStudentsSummaryData[$studentId] = $summaryData;
+        $processedStudentsSummaryData[$studentId] = $summaryDataForDB;
     }
 
     if ($isP1_P3 && !empty($processedStudentsSummaryData)) {
-        $studentAverages = [];
-        foreach ($processedStudentsSummaryData as $studId => $details) {
-            $studentAverages[$studId] = $details['p1p3_average_eot_score'] ?? 0;
+        $totalStudentsInClass = count($processedStudentsSummaryData);
+        // Update all students with total number in class first
+        foreach ($processedStudentsSummaryData as $studId => &$detailsRef) { // Use reference
+            $detailsRef['p1p3_total_students_in_class'] = $totalStudentsInClass;
         }
-        arsort($studentAverages, SORT_NUMERIC);
+        unset($detailsRef);
 
-        $rank_display = 0;
-        $previous_score = -1;
-        $students_processed_for_rank = 0;
-        $totalStudentsInClass = count($studentAverages);
 
-        foreach ($studentAverages as $studId => $score) {
-            $students_processed_for_rank++;
-            if ($score != $previous_score) {
-                $rank_display = $students_processed_for_rank;
-            }
+        // Rank by Average EOT (p1p3_position_in_class)
+        $studentAveragesEOT = [];
+        foreach ($processedStudentsSummaryData as $studId => $details) { $studentAveragesEOT[$studId] = $details['p1p3_average_eot_score'] ?? 0; }
+        arsort($studentAveragesEOT, SORT_NUMERIC);
+        $rank_display = 0; $previous_score = -1; $students_processed = 0;
+        foreach ($studentAveragesEOT as $studId => $score) {
+            $students_processed++;
+            if ($score != $previous_score) { $rank_display = $students_processed; }
             $processedStudentsSummaryData[$studId]['p1p3_position_in_class'] = $rank_display;
-            $processedStudentsSummaryData[$studId]['p1p3_total_students_in_class'] = $totalStudentsInClass;
+            $previous_score = $score;
+        }
+
+        // Rank by Total BOT (p1p3_position_total_bot)
+        $studentTotalsBOT = [];
+        foreach ($processedStudentsSummaryData as $studId => $details) { $studentTotalsBOT[$studId] = $details['p1p3_total_bot_score'] ?? 0; }
+        arsort($studentTotalsBOT, SORT_NUMERIC);
+        $rank_display = 0; $previous_score = -1; $students_processed = 0;
+        foreach ($studentTotalsBOT as $studId => $score) {
+            $students_processed++;
+            if ($score != $previous_score) { $rank_display = $students_processed; }
+            $processedStudentsSummaryData[$studId]['p1p3_position_total_bot'] = $rank_display;
+            $previous_score = $score;
+        }
+
+        // Rank by Total MOT (p1p3_position_total_mot)
+        $studentTotalsMOT = [];
+        foreach ($processedStudentsSummaryData as $studId => $details) { $studentTotalsMOT[$studId] = $details['p1p3_total_mot_score'] ?? 0; }
+        arsort($studentTotalsMOT, SORT_NUMERIC);
+        $rank_display = 0; $previous_score = -1; $students_processed = 0;
+        foreach ($studentTotalsMOT as $studId => $score) {
+            $students_processed++;
+            if ($score != $previous_score) { $rank_display = $students_processed; }
+            $processedStudentsSummaryData[$studId]['p1p3_position_total_mot'] = $rank_display;
+            $previous_score = $score;
+        }
+
+        // Rank by Total EOT (p1p3_position_total_eot)
+        $studentTotalsEOT = [];
+        foreach ($processedStudentsSummaryData as $studId => $details) { $studentTotalsEOT[$studId] = $details['p1p3_total_eot_score'] ?? 0;  }
+        arsort($studentTotalsEOT, SORT_NUMERIC);
+        $rank_display = 0; $previous_score = -1; $students_processed = 0;
+        foreach ($studentTotalsEOT as $studId => $score) {
+            $students_processed++;
+            if ($score != $previous_score) { $rank_display = $students_processed; }
+            $processedStudentsSummaryData[$studId]['p1p3_position_total_eot'] = $rank_display;
             $previous_score = $score;
         }
     }
 
     foreach ($processedStudentsSummaryData as $studentId => $summaryDataToSave) {
         if (!saveStudentReportSummary($pdo, $summaryDataToSave)) {
-            throw new Exception("Failed to save report summary with remarks for student ID: " . $studentId . ". Check dal.php error logs if any.");
+            throw new Exception("Failed to save report summary for student ID: " . $studentId);
         }
     }
 
-    // Store the fully enriched data (raw scores + per-subject calculated grades/remarks) in session for report_card.php
-    // This is a temporary measure until report_card.php is refactored to fetch this directly or via a more specific DAL function.
-    // This addresses the data gap identified for report_card.php (Step 10).
     $_SESSION['enriched_students_data_for_batch_' . $batch_id] = $enrichedStudentDataForReportCard;
 
-
     $pdo->commit();
-    $_SESSION['success_message'] = "Calculations, summaries, and automatic remarks generated successfully for Batch ID: " . htmlspecialchars($batch_id);
+    $_SESSION['success_message'] = "Calculations, summaries, and remarks generated and saved successfully for Batch ID: " . htmlspecialchars($batch_id);
 } catch (Exception $e) {
-    if ($pdo->inTransaction()) {
-        $pdo->rollBack();
-    }
-    $_SESSION['error_message'] = "Error during calculations/remarks for Batch ID " . htmlspecialchars($batch_id) . ": " . $e->getMessage() . " (File: " . basename($e->getFile()) . ", Line: " . $e->getLine() .")";
+    if ($pdo->inTransaction()) { $pdo->rollBack(); }
+    $_SESSION['error_message'] = "Error during calculations for Batch ID " . htmlspecialchars($batch_id) . ": " . $e->getMessage() . " (File: " . basename($e->getFile()) . ", Line: " . $e->getLine() .")";
 }
 
 header('Location: view_processed_data.php?batch_id=' . $batch_id);
