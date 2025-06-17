@@ -63,10 +63,15 @@ $p1p3PositionTotalEot = htmlspecialchars($studentSummaryData['p1p3_position_tota
 $subjectsToDisplayInTable = $currentStudentEnrichedData['subjects'] ?? [];
 
 $subjectDisplayNames = $subjectDisplayNames ?? [
-    'english' => 'English', 'mtc' => 'Mathematics (MTC)', 'science' => 'Science',
-    'sst' => 'Social Studies (SST)', 'kiswahili' => 'Kiswahili',
-    're' => 'Religious Education (R.E)', 'lit1' => 'Literacy I',
-    'lit2' => 'Literacy II', 'local_lang' => 'Local Language'
+    'english' => 'ENGLISH',
+    'mtc' => 'MATHEMATICS',
+    'science' => 'SCIENCE',
+    'sst' => 'SOCIAL STUDIES',
+    'kiswahili' => 'KISWAHILI',
+    're' => 'RELIGIOUS EDUCATION',
+    'lit1' => 'LITERACY ONE',
+    'lit2' => 'LITERACY TWO',
+    'local_lang' => 'LOCAL LANGUAGE'
 ];
 $gradingScaleForP4P7Display = $gradingScaleForP4P7Display ?? [
     'D1' => '90-100', 'D2' => '80-89', 'C3' => '70-79', 'C4' => '60-69',
@@ -109,9 +114,44 @@ $teacherInitials = $teacherInitials ?? ($_SESSION['current_teacher_initials'] ??
         .academic-summary-grid { display: grid; grid-template-columns: auto 1fr auto 1fr; gap: 1mm 3mm; margin-bottom: 2.5mm; font-size: 9pt; background-color: #f0f0f0; padding: 1.5mm; border: 1px solid #ddd;}
         .academic-summary-grid strong {font-weight: bold;}
         .results-table { width: 100%; border-collapse: collapse; margin-bottom: 2.5mm; font-size: 8pt; }
-        .results-table th, .results-table td { border: 1px solid #000; padding: 1.5mm 1mm; text-align: center; vertical-align: middle; }
+        /* Base style for all th/td in this table */
+        .results-table th, .results-table td {
+            border: 1px solid #000;
+            padding: 1.5mm 1mm;
+            text-align: center; /* Default, specific columns will override */
+            vertical-align: middle;
+            overflow-wrap: break-word;
+            /* No generic width property here */
+        }
         .results-table th { background-color: #e9e9e9; font-weight: bold; }
-        .results-table td.subject-name { text-align: left; font-weight: normal; }
+        /* td.subject-name rule is merged into the th:first-child, td.subject-name block below */
+
+        /* Subject Column */
+        .results-table th:first-child,
+        .results-table td.subject-name {
+            width: 25%; /* Target: 25% */
+            text-align: left; /* Target: left */
+            font-weight: normal; /* Ensure subject name in td is not bold if th is bolded by default */
+        }
+        .results-table th:first-child {
+             font-weight: bold; /* Explicitly make header bold if td style overrides */
+        }
+
+
+        /* Remarks Column */
+        .results-table th:nth-last-child(2),
+        .results-table td:nth-last-child(2) {
+            width: 30%; /* Target: 30% */
+            text-align: left; /* Target: left */
+        }
+
+        /* Initials Column */
+        .results-table th:last-child,
+        .results-table td:last-child {
+            width: 8%; /* Target: 8% */
+            /* text-align: center; (default from .results-table th, .results-table td) */
+        }
+
         .results-table .summary-row td { background-color: #f8f9fa; font-weight: bold; }
         .p1p3-performance-summary-after-table { margin-top: 2mm; margin-bottom: 2mm; font-size: 8.5pt; border: 1px solid #eaeaea; padding: 1mm; background-color: #f9f9f9; text-align:center; }
         .remarks-section { margin-top: 2.5mm; font-size: 9pt;}
@@ -166,7 +206,7 @@ $teacherInitials = $teacherInitials ?? ($_SESSION['current_teacher_initials'] ??
         </div>
         <?php elseif ($isP1_P3): ?>
         <div class="academic-summary-grid">
-            <strong>POSITION (Av. EOT):</strong> <span><?php echo $p1p3PositionBasedOnAvgEOT; ?> out of <?php echo $totalStudentsInClassForP1P3; ?></span>
+            <strong>POSITION (EOT):</strong> <span><?php echo $p1p3PositionTotalEot; ?> out of <?php echo $totalStudentsInClassForP1P3; ?></span>
             <span></span>
         </div>
         <?php endif; ?>
@@ -176,11 +216,11 @@ $teacherInitials = $teacherInitials ?? ($_SESSION['current_teacher_initials'] ??
                 <tr>
                     <th>SUBJECT</th>
                     <th>B.O.T (100)</th>
-                    <th>GRADE</th>
+                    <?php if (!$isP1_P3): ?><th>GRADE</th><?php endif; ?>
                     <th>M.O.T (100)</th>
-                    <th>GRADE</th>
+                    <?php if (!$isP1_P3): ?><th>GRADE</th><?php endif; ?>
                     <th>END OF TERM (100)</th>
-                    <th>GRADE</th>
+                    <?php if (!$isP1_P3): ?><th>GRADE</th><?php endif; ?>
                     <?php if ($isP1_P3): ?><th>AVERAGE</th><?php endif; ?>
                     <th>REMARKS</th>
                     <th>INITIALS</th>
@@ -191,8 +231,7 @@ $teacherInitials = $teacherInitials ?? ($_SESSION['current_teacher_initials'] ??
                     <?php
                         $subjectPerformance = $subjectsToDisplayInTable[$subjectKey] ?? null;
                         $subjDisplayName = htmlspecialchars(
-                            $subjectPerformance['subject_name_full'] ??
-                            ($subjectDisplayNames[$subjectKey] ?? ucfirst($subjectKey))
+                            isset($subjectDisplayNames[$subjectKey]) ? $subjectDisplayNames[$subjectKey] : ($subjectPerformance['subject_name_full'] ?? ucfirst($subjectKey))
                         );
                         $initialsForSubj = htmlspecialchars($teacherInitials[$subjectKey] ?? 'N/A');
 
@@ -205,11 +244,11 @@ $teacherInitials = $teacherInitials ?? ($_SESSION['current_teacher_initials'] ??
                     <tr>
                         <td class="subject-name"><?php echo $subjDisplayName; ?></td>
                         <td><?php echo htmlspecialchars($subjectPerformance['bot_score'] ?? 'N/A'); ?></td>
-                        <td><?php echo $bot_grade; ?></td>
+                        <?php if (!$isP1_P3): ?><td><?php echo $bot_grade; ?></td><?php endif; ?>
                         <td><?php echo htmlspecialchars($subjectPerformance['mot_score'] ?? 'N/A'); ?></td>
-                        <td><?php echo $mot_grade; ?></td>
+                        <?php if (!$isP1_P3): ?><td><?php echo $mot_grade; ?></td><?php endif; ?>
                         <td><?php echo htmlspecialchars($subjectPerformance['eot_score'] ?? 'N/A'); ?></td>
-                        <td><?php echo $eot_grade; ?></td>
+                        <?php if (!$isP1_P3): ?><td><?php echo $eot_grade; ?></td><?php endif; ?>
                         <?php if ($isP1_P3): ?><td><?php echo $subject_term_average; ?></td><?php endif; ?>
                         <td><?php echo $eot_remark; ?></td>
                         <td><?php echo $initialsForSubj; ?></td>
@@ -220,23 +259,23 @@ $teacherInitials = $teacherInitials ?? ($_SESSION['current_teacher_initials'] ??
                     <tr class="summary-row">
                         <td><strong>AVERAGE</strong></td>
                         <td><strong><?php echo $p1p3OverallAverageBot; ?></strong></td>
-                        <td></td> <?php // Empty cell for BOT Grade column ?>
+                        <?php // No Grade column for P1-P3 ?>
                         <td><strong><?php echo $p1p3OverallAverageMot; ?></strong></td>
-                        <td></td> <?php // Empty cell for MOT Grade column ?>
+                        <?php // No Grade column for P1-P3 ?>
                         <td><strong><?php echo $p1p3AverageEOT; // This is overall EOT Average ?></strong></td>
-                        <td></td> <?php // Empty cell for EOT Grade column ?>
+                        <?php // No Grade column for P1-P3 ?>
                         <td></td> <?php // Empty cell for Subject Term Average column ?>
                         <td colspan="2"></td> <?php // Colspan for Remarks and Initials ?>
                     </tr>
                     <tr class="summary-row">
                         <td><strong>POSITION</strong></td>
                         <td><strong><?php echo $p1p3PositionTotalBot; ?></strong></td>
-                        <td></td>
+                        <?php // No Grade column for P1-P3 ?>
                         <td><strong><?php echo $p1p3PositionTotalMot; ?></strong></td>
-                        <td></td>
+                        <?php // No Grade column for P1-P3 ?>
                         <td><strong><?php echo $p1p3PositionTotalEot; ?></strong></td>
-                        <td></td>
-                        <td></td>
+                        <?php // No Grade column for P1-P3 ?>
+                        <td></td> <?php // Empty cell for Subject Term Average column ?>
                         <td colspan="2"></td>
                     </tr>
                 <?php endif; ?>
