@@ -65,7 +65,7 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>View Report Archives - Maria Owembabazi P/S</title>
+    <title>View Report Archives - Maria Ow'embabazi P/S</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <link href="css/style.css" rel="stylesheet">
@@ -82,7 +82,7 @@ try {
         <div class="container-fluid">
             <a class="navbar-brand" href="index.php">
                 <img src="images/logo.png" alt="Logo" width="30" height="30" class="d-inline-block align-text-top me-2" onerror="this.style.display='none';">
-                Maria Owembabazi P/S - Report System
+                Maria Ow'embabazi P/S - Report System
             </a>
             <a href="index.php" class="btn btn-outline-secondary"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
         </div>
@@ -164,6 +164,12 @@ try {
                                     <a href="generate_pdf.php?batch_id=<?php echo $batch['batch_id']; ?>&output_mode=I" class="btn btn-sm btn-outline-warning" title="View PDF Report" target="_blank"><i class="fas fa-file-alt"></i> View PDF</a>
                                     <a href="generate_pdf.php?batch_id=<?php echo $batch['batch_id']; ?>&output_mode=D" class="btn btn-sm btn-outline-danger" title="Download PDF Report" target="_blank"><i class="fas fa-file-pdf"></i> Download PDF</a>
                                     <a href="summary_sheet.php?batch_id=<?php echo $batch['batch_id']; ?>" class="btn btn-sm btn-outline-success" title="View Summary Sheet" target="_blank"><i class="fas fa-chart-bar"></i> Summary</a>
+                                    <form method="POST" action="delete_batch.php" style="display: inline-block;" onsubmit="return confirm('Are you sure you want to delete this entire batch (ID: <?php echo htmlspecialchars($batch['batch_id']); ?>) and all its associated data? This action cannot be undone.');">
+                                        <input type="hidden" name="batch_id" value="<?php echo htmlspecialchars($batch['batch_id']); ?>">
+                                        <button type="submit" class="btn btn-sm btn-danger" title="Delete Batch">
+                                            <i class="fas fa-trash-alt"></i> Delete
+                                        </button>
+                                    </form>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -182,7 +188,7 @@ try {
     </div>
 
     <footer class="text-center mt-5 mb-3 p-3 non-printable" style="background-color: #f8f9fa;">
-        <p>&copy; <?php echo date('Y'); ?> Maria Owembabazi Primary School - <i>Good Christian, Good Citizen</i></p>
+        <p>&copy; <?php echo date('Y'); ?> Maria Ow'embabazi Primary School - <i>Good Christian, Good Citizen</i></p>
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

@@ -9,7 +9,7 @@ date_default_timezone_set('Africa/Kampala'); // Or user's preferred timezone
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Report System Dashboard - Maria Owembabazi P/S</title>
+    <title>Report System Dashboard - Maria Ow'embabazi P/S</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet"> <!-- Font Awesome for icons -->
     <link rel="icon" type="image/png" href="images/logo.png">
@@ -123,7 +123,7 @@ date_default_timezone_set('Africa/Kampala'); // Or user's preferred timezone
     <nav id="sidebar">
         <div class="sidebar-header">
             <img src="images/logo.png" alt="School Logo" onerror="this.style.display='none';">
-            <h5>Maria Owembabazi P/S</h5>
+            <h5>Maria Ow'embabazi P/S</h5>
             <p class="datetime-display"><?php echo date("D, d M Y H:i"); ?></p>
         </div>
 
@@ -167,7 +167,7 @@ date_default_timezone_set('Africa/Kampala'); // Or user's preferred timezone
         <div class="container-fluid pt-3">
             <h2>Dashboard</h2>
             <div class="main-content-card">
-                <p>Welcome to the Maria Owembabazi Primary School Report Card System Dashboard.</p>
+                <p>Welcome to the Maria Ow'embabazi Primary School Report Card System Dashboard.</p>
                 <p>Use the sidebar to navigate through the available options. You can generate new reports, view summaries, or download templates.</p>
                 <!-- More dashboard widgets/summaries can go here later -->
             </div>

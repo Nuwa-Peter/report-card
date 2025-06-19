@@ -169,8 +169,9 @@ function saveStudentReportSummary(PDO $pdo, array $summaryData): bool {
 
     if ($existingId) { // Update
         $updateParts = [];
+        // Restore full $updateParts logic
         foreach (array_keys($dataToSave) as $key) {
-            if ($key !== 'student_id' && $key !== 'report_batch_id' && $key !== 'id') { // Don't include PKs in SET
+            if ($key !== 'student_id' && $key !== 'report_batch_id' && $key !== 'id') { // 'id' is not in $dataToSave at this point
                 $updateParts[] = "`$key` = :$key";
             }
         }
@@ -178,21 +179,84 @@ function saveStudentReportSummary(PDO $pdo, array $summaryData): bool {
 
         $sql = "UPDATE student_report_summary SET " . implode(', ', $updateParts) .
                " WHERE id = :existing_id";
-        $dataToSave['existing_id'] = $existingId; // Add existing ID for the WHERE clause
+
+        // Ensure existing_id is part of the array passed to execute() for the WHERE clause
+        $dataToSave['existing_id'] = $existingId;
+
         $stmt = $pdo->prepare($sql);
+
+        // Bind parameters for the UPDATE SET clause and WHERE clause
+        $keysInSetClause = [];
+        foreach (array_keys($dataToSave) as $key) {
+            if ($key !== 'student_id' && $key !== 'report_batch_id' && $key !== 'id' && $key !== 'existing_id') {
+                $keysInSetClause[] = $key;
+            }
+        }
+        foreach ($keysInSetClause as $keyToBind) {
+            // Check if placeholder exists in SQL to prevent errors with bindValue
+            // This is a good practice, though $updateParts should ensure they exist.
+            if (strpos($sql, ":$keyToBind") !== false) {
+                 $stmt->bindValue(":$keyToBind", $dataToSave[$keyToBind]);
+            }
+        }
+        $stmt->bindValue(":existing_id", $dataToSave['existing_id']);
+        // $executionPayload variable removed, direct execute after binding for UPDATE
+
     } else { // Insert
         $colsString = implode(', ', array_map(function($col) { return "`$col`"; }, array_keys($dataToSave)));
         $placeholdersString = implode(', ', array_map(function($col) { return ":$col"; }, array_keys($dataToSave)));
         $sql = "INSERT INTO student_report_summary ($colsString) VALUES ($placeholdersString)";
         $stmt = $pdo->prepare($sql);
+        // For INSERT, $dataToSave is still passed to execute directly
     }
 
     try {
-        return $stmt->execute($dataToSave);
+        if ($existingId) {
+            return $stmt->execute(); // Execute with bound parameters for UPDATE
+        } else {
+            return $stmt->execute($dataToSave); // Execute with array for INSERT
+        }
     } catch (PDOException $e) {
-        // Log error: $e->getMessage()
-        error_log("DAL Error in saveStudentReportSummary: " . $e->getMessage());
-        return false;
+        $errorMsg = "DAL Base Error: " . $e->getMessage();
+        $sqlState = "N/A";
+        $driverCode = "N/A";
+        $driverMsg = "N/A";
+        $queryStringText = "N/A";
+        $jsonData = "Error encoding data_to_save or it was not set at point of logging."; // Changed to data_to_save
+
+        if (isset($stmt) && $stmt instanceof PDOStatement) {
+            $pdoErrorInfo = $stmt->errorInfo();
+            if ($pdoErrorInfo && is_array($pdoErrorInfo)) {
+                $sqlState = $pdoErrorInfo[0] ?? "N/A";
+                $driverCode = $pdoErrorInfo[1] ?? "N/A";
+                $driverMsg = $pdoErrorInfo[2] ?? "N/A";
+            }
+            if (property_exists($stmt, 'queryString')) {
+                 $queryStringText = $stmt->queryString ?? "N/A";
+            }
+        }
+
+        if (isset($dataToSave)) { // Log the full $dataToSave
+            if (defined('JSON_INVALID_UTF8_SUBSTITUTE')) {
+                $jsonData = json_encode($dataToSave, JSON_INVALID_UTF8_SUBSTITUTE);
+            } else {
+                $cleanedData = array_map(function($value) {
+                    return is_string($value) ? mb_convert_encoding($value, 'UTF-8', 'UTF-8') : $value;
+                }, $dataToSave); // Use $dataToSave
+                $jsonData = json_encode($cleanedData);
+            }
+            if ($jsonData === false) {
+                $jsonData = "Failed to json_encode data_to_save. JSON Error: " . json_last_error_msg();
+            }
+        }
+
+        $finalConsolidatedError = sprintf(
+            "Caught Exception: %s | SQLSTATE: %s | Driver Error Code: %s | Driver Error Message: %s",
+            $errorMsg, $sqlState, $driverCode, $driverMsg
+        );
+
+        error_log("DAL Critical Error in saveStudentReportSummary: " . $finalConsolidatedError . " | Attempted Query Context: " . $queryStringText . " | Data Package: " . $jsonData);
+        throw new Exception($finalConsolidatedError);
     }
 }
 

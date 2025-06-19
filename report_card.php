@@ -205,7 +205,7 @@ $teacherInitials = $teacherInitials ?? ($_SESSION['current_teacher_initials'] ??
     <div class="report-card-container">
         <!-- Ensure no img tag for watermark is here -->
         <div class="header">
-            <div class="school-name"><?php echo htmlspecialchars("MARIA OWEMBABAZI PRIMARY SCHOOL"); ?></div>
+            <div class="school-name"><?php echo htmlspecialchars("MARIA OW'EMBABAZI PRIMARY SCHOOL"); ?></div>
             <div class="logo-container"><img src="images/logo.png" alt="School Logo" onerror="this.style.display='none';"></div>
             <div class="school-details">P.O BOX 406, MBARARA</div>
             <div class="school-details">Tel. 0700172858 | Email: houseofnazareth.schools@gmail.com</div>

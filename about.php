@@ -7,7 +7,7 @@ date_default_timezone_set('Africa/Kampala'); // Or user's preferred timezone
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>About - Report System - Maria Owembabazi P/S</title>
+    <title>About - Report System - Maria Ow'embabazi P/S</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <link href="css/style.css" rel="stylesheet">
@@ -65,7 +65,7 @@ date_default_timezone_set('Africa/Kampala'); // Or user's preferred timezone
         <div class="container-fluid">
             <a class="navbar-brand" href="index.php">
                 <img src="images/logo.png" alt="Logo" width="30" height="30" class="d-inline-block align-text-top me-2" onerror="this.style.display='none';">
-                Maria Owembabazi P/S - Report System
+                Maria Ow'embabazi P/S - Report System
             </a>
             <a href="index.php" class="btn btn-outline-secondary"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
         </div>
@@ -80,7 +80,7 @@ date_default_timezone_set('Africa/Kampala'); // Or user's preferred timezone
 
         <section id="school-contacts">
             <h3 class="section-title">School Contacts</h3>
-            <p><strong>Maria Owembabazi Primary School</strong></p>
+            <p><strong>Maria Ow'embabazi Primary School</strong></p>
             <p>P.O BOX 406, MBARARA</p>
             <p>Tel. 0700172858</p>
             <p>Email: houseofnazareth.schools@gmail.com</p>
@@ -89,7 +89,7 @@ date_default_timezone_set('Africa/Kampala'); // Or user's preferred timezone
 
         <section id="about-system">
             <h3 class="section-title">About the Report Card System</h3>
-            <p>This system is designed to streamline the generation and management of student academic reports for Maria Owembabazi Primary School. It allows for the importation of student scores from Excel files, calculation of termly performance metrics, and generation of printable PDF report cards and summary sheets.</p>
+            <p>This system is designed to streamline the generation and management of student academic reports for Maria Ow'embabazi Primary School. It allows for the importation of student scores from Excel files, calculation of termly performance metrics, and generation of printable PDF report cards and summary sheets.</p>
             <p>Key features include:</p>
             <ul>
                 <li>Batch processing of student marks from standardized Excel templates.</li>
@@ -105,22 +105,98 @@ date_default_timezone_set('Africa/Kampala'); // Or user's preferred timezone
         <section id="help-guide">
             <h3 class="section-title">Help & Navigation Guide</h3>
             <p><strong>Dashboard:</strong> The main entry point. Use the sidebar to navigate.</p>
-            <ul>
-                <li><strong>Download Marks Entry Template:</strong> Get the Excel template to fill in student marks. Ensure student names are in ALL CAPS and subject name is in cell A1 of each subject file.</li>
-                <li><strong>Marks Entry:</strong> Upload the completed Excel files (one per subject) for a specific class, year, and term. Fill in all required information. Data is saved to the database.</li>
-                <li><strong>View Report Archives:</strong> After data is processed, use this section to find past report batches. You can filter by year, term, or class. From here, for each batch, you can:
+
+            <h5><i class="fas fa-file-excel me-2"></i>Download Marks Entry Template</h5>
+            <ol>
+                <li>Navigate to "Download Marks Entry Template" from the sidebar.</li>
+                <li>Click the download link/button to get the Excel file (`student_marks_template.xlsx`).</li>
+                <li>Open the template in Microsoft Excel or a compatible spreadsheet program.</li>
+                <li><strong>Crucial Formatting:</strong>
                     <ul>
-                        <li>Click "Process/View Data": This takes you to a page showing the raw imported scores. On *that* page, click "Run Calculations & Auto-Remarks" to compute all summaries and remarks for the batch. This step is crucial.</li>
-                        <li>Once calculations are run, you can then use "View PDF", "Download PDF", or "Summary" for that batch.</li>
+                        <li>Enter the Subject Name (e.g., "ENGLISH", "MATHEMATICS") exactly in cell A1. This is case-sensitive and must match system subject codes if applicable for some internal logic, or be consistent.</li>
+                        <li>Column headers in row 1 should be: Student Name (B1), B.O.T Score (C1), M.O.T Score (D1), E.O.T Score (E1). (Adjust if template is different, this is an example).</li>
+                        <li>Student names (starting from cell B2) must be in ALL CAPS.</li>
+                        <li>Enter scores for Beginning of Term (B.O.T), Mid of Term (M.O.T), and End of Term (E.O.T) in the respective columns. Scores should be numerical (0-100). Leave blank or use 'N/A' if a score is not available.</li>
                     </ul>
                 </li>
-                <li><strong>Summary Sheets:</strong> Access overall class performance summaries. Select a batch to view details. Ensure calculations have been run for the batch first.</li>
-            </ul>
-            <p><strong>General Tips:</strong></p>
+                <li>Save the completed file for each subject for the class.</li>
+            </ol>
+
+            <h5><i class="fas fa-edit me-2"></i>Marks Entry (Importing Scores)</h5>
+            <ol>
+                <li>Navigate to "Marks Entry" from the sidebar.</li>
+                <li>Select the correct Class, Year, and Term from the dropdown menus.</li>
+                <li>Enter the "This Term Ended On" and "Next Term Begins On" dates.</li>
+                <li>For each subject taught in the selected class:
+                    <ul>
+                        <li>Click "Choose File" next to the subject name (e.g., English Results).</li>
+                        <li>Select the corresponding completed Excel marks file you prepared for that subject.</li>
+                        <li>Enter the Teacher's Initials for that subject (e.g., J.D.).</li>
+                    </ul>
+                </li>
+                <li>Once all subject files and initials are provided for the class configuration, click the "Process & Save Data" button at the bottom.</li>
+                <li>The system will validate the files and save the scores. You should see a success or error message.</li>
+                <li>If successful, a link to "View Details for Processed Batch ID: X" will appear. Click this to proceed to the next step.</li>
+            </ol>
+
+            <h5><i class="fas fa-archive me-2"></i>View Report Archives & Process Data</h5>
+            <ol>
+                <li>Navigate to "View Report Archives" from the sidebar.</li>
+                <li>You can use the filters (Year, Term, Class) to find specific batches or view all. Click "Filter".</li>
+                <li>Each processed batch will be listed with its details and action buttons.</li>
+                <li>For a batch that has had its marks imported but not yet fully processed:
+                    <ul>
+                        <li>Click the "<i class="fas fa-cogs"></i> Process/View Data" button. This takes you to the `view_processed_data.php` page.</li>
+                        <li>On this page, review the imported scores if needed.</li>
+                        <li><strong>Crucially, click the "<i class="fas fa-calculator"></i> Run Calculations & Auto-Remarks" button.</strong> This performs all necessary calculations (averages, positions, aggregates, divisions) and generates automated teacher/headteacher remarks. This step must be completed before generating final reports or summaries.</li>
+                        <li>You should see a success message once calculations are done.</li>
+                    </ul>
+                </li>
+                <li>Once calculations are complete for a batch, you can use the other action buttons from "View Report Archives" (or often from `view_processed_data.php` as well):
+                    <ul>
+                        <li>"<i class="fas fa-file-alt"></i> View PDF": Opens the combined PDF report for all students in the batch in a new browser tab.</li>
+                        <li>"<i class="fas fa-file-pdf"></i> Download PDF": Downloads the combined PDF report.</li>
+                        <li>"<i class="fas fa-chart-bar"></i> Summary": Takes you to the `summary_sheet.php` for that batch.</li>
+                    </ul>
+                </li>
+            </ol>
+
+            <h5><i class="fas fa-chart-pie me-2"></i>Summary Sheets</h5>
+            <ol>
+                <li>Navigate to "Summary Sheets" from the sidebar, or click the "Summary" button for a batch from "View Report Archives."</li>
+                <li>If navigating directly, select the desired processed batch from the dropdown and click "View Summary."</li>
+                <li>The page will display overall class performance, including charts and lists depending on the class level (P1-P3 or P4-P7).</li>
+                <li>Ensure calculations have been run for the batch for the summary to be accurate.</li>
+            </ol>
+            <!-- General Tips integrated or covered above -->
+        </section>
+
+        <section id="troubleshooting">
+            <h3 class="section-title mt-4">Troubleshooting / Common Issues</h3>
             <ul>
-                <li>Ensure all Excel files are correctly formatted as per the provided template before uploading.</li>
-                <li>Always run calculations for a batch via "View Report Archives" -> "Process/View Data" -> "Run Calculations & Auto-Remarks" before attempting to generate final PDFs or detailed summaries.</li>
-                <li>If you encounter any errors, check the messages displayed.</li>
+                <li><strong>Error during Excel Upload/Processing:</strong>
+                    <ul>
+                        <li>Ensure your Excel file strictly follows the template format (Subject Name in A1, specific headers, ALL CAPS student names).</li>
+                        <li>Check for any non-numeric values in score columns where numbers are expected.</li>
+                        <li>Make sure file is `.xlsx` format.</li>
+                    </ul>
+                </li>
+                <li><strong>Reports/Summaries are empty or show old data:</strong>
+                    <ul>
+                        <li>Always ensure you have clicked "Run Calculations & Auto-Remarks" for the specific batch after importing marks. This is found via "View Report Archives" -> "Process/View Data".</li>
+                    </ul>
+                </li>
+                <li><strong>PDF Not Generating / Error in PDF:</strong>
+                    <ul>
+                        <li>Confirm calculations were run.</li>
+                        <li>If errors persist, note the error message and contact system support/developer.</li>
+                    </ul>
+                </li>
+                <li><strong>Cannot find a Batch:</strong>
+                    <ul>
+                        <li>Use the filters in "View Report Archives". If still not found, it may not have been imported, or it was deleted.</li>
+                    </ul>
+                </li>
             </ul>
         </section>
 
@@ -133,13 +209,13 @@ date_default_timezone_set('Africa/Kampala'); // Or user's preferred timezone
                 </li>
                 <li>with the assistance of <strong>Jules (AI Agent)</strong>.</li>
             </ul>
-            <p>We hope this system serves Maria Owembabazi Primary School effectively!</p>
+            <p>We hope this system serves Maria Ow'embabazi Primary School effectively!</p>
         </section>
 
     </div>
 
     <footer class="text-center mt-5 mb-3 p-3 non-printable" style="background-color: #f8f9fa;">
-        <p>&copy; <?php echo date('Y'); ?> Maria Owembabazi Primary School - <i>Good Christian, Good Citizen</i></p>
+        <p>&copy; <?php echo date('Y'); ?> Maria Ow'embabazi Primary School - <i>Good Christian, Good Citizen</i></p>
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

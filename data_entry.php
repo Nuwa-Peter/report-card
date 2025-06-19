@@ -20,7 +20,7 @@ if(isset($_SESSION['report_data']) && !isset($_SESSION['last_processed_batch_id'
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Report Card Generator - Maria Owembabazi Primary School</title>
+    <title>Report Card Generator - Maria Ow'embabazi Primary School</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <link rel="icon" type="image/png" href="images/logo.png">
@@ -42,7 +42,7 @@ if(isset($_SESSION['report_data']) && !isset($_SESSION['last_processed_batch_id'
         <div class="container-fluid">
             <a class="navbar-brand" href="index.php">
                 <img src="images/logo.png" alt="Logo" width="30" height="30" class="d-inline-block align-text-top me-2" onerror="this.style.display='none';">
-                Maria Owembabazi P/S - Report System
+                Maria Ow'embabazi P/S - Report System
             </a>
             <a href="index.php" class="btn btn-outline-secondary"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
         </div>
@@ -75,8 +75,11 @@ if(isset($_SESSION['report_data']) && !isset($_SESSION['last_processed_batch_id'
         </div>
 
         <form action="process_excel.php" method="post" enctype="multipart/form-data">
+            <div class="row"><div class="col-lg-9 mx-auto"> <!-- Overall Form Width Wrapper -->
+
+            <div class="card mb-4"><div class="card-body"> <!-- School & Term Info Card -->
             <h5 class="mt-4">School & Term Information</h5>
-            <div class="row mb-3">
+            <div class="row mb-3 justify-content-center">
                 <div class="col-md-3">
                     <label for="class_selection" class="form-label">Class:</label>
                     <select class="form-select" id="class_selection" name="class_selection" required>
@@ -111,7 +114,7 @@ if(isset($_SESSION['report_data']) && !isset($_SESSION['last_processed_batch_id'
                     </select>
                 </div>
             </div>
-            <div class="row mb-3">
+            <div class="row mb-3 justify-content-center">
                  <div class="col-md-4">
                     <label for="term_end_date" class="form-label">This Term Ended On:</label>
                     <input type="date" class="form-control" id="term_end_date" name="term_end_date" required>
@@ -121,60 +124,66 @@ if(isset($_SESSION['report_data']) && !isset($_SESSION['last_processed_batch_id'
                     <input type="date" class="form-control" id="next_term_begin_date" name="next_term_begin_date" required>
                 </div>
             </div>
+            </div></div> <!-- Close School & Term Info Card -->
 
+            <div class="card mb-4"><div class="card-body"> <!-- Subject Files Card -->
             <h5 class="mt-4">Subject Excel Files & Teacher Initials</h5>
             <p class="text-muted">Upload one .xlsx file per subject. Cell A1=Subject Name, B1=BOT, C1=MOT, D1=EOT. Data from Row 2.</p>
 
             <!-- Common Subjects -->
-            <div class="row mb-2 subject-input-row common-subject" id="english-block">
+            <div class="row mb-2 subject-input-row common-subject justify-content-center" id="english-block">
                 <div class="col-md-5"><label for="english_file" class="form-label">English Results (.xlsx):</label><input type="file" class="form-control" id="english_file" name="subject_files[english]" accept=".xlsx"></div>
                 <div class="col-md-3"><label for="english_initials" class="form-label">English Teacher Initials:</label><input type="text" class="form-control" id="english_initials" name="teacher_initials[english]" placeholder="e.g., J.D." value="<?php echo htmlspecialchars($current_teacher_initials_for_session['english'] ?? ''); ?>"></div>
             </div>
-            <div class="row mb-2 subject-input-row common-subject" id="mtc-block">
+            <div class="row mb-2 subject-input-row common-subject justify-content-center" id="mtc-block">
                 <div class="col-md-5"><label for="mtc_file" class="form-label">MTC (Math) Results (.xlsx):</label><input type="file" class="form-control" id="mtc_file" name="subject_files[mtc]" accept=".xlsx"></div>
                 <div class="col-md-3"><label for="mtc_initials" class="form-label">MTC Teacher Initials:</label><input type="text" class="form-control" id="mtc_initials" name="teacher_initials[mtc]" placeholder="e.g., A.B." value="<?php echo htmlspecialchars($current_teacher_initials_for_session['mtc'] ?? ''); ?>"></div>
             </div>
 
             <!-- P1-P3 Specific Subjects -->
-            <div class="row mb-2 subject-input-row p1p3-subject" id="re-block" style="display:none;">
+            <div class="row mb-2 subject-input-row p1p3-subject justify-content-center" id="re-block" style="display:none;">
                 <div class="col-md-5"><label for="re_file" class="form-label">R.E Results (.xlsx):</label><input type="file" class="form-control" id="re_file" name="subject_files[re]" accept=".xlsx"></div>
                 <div class="col-md-3"><label for="re_initials" class="form-label">R.E Teacher Initials:</label><input type="text" class="form-control" id="re_initials" name="teacher_initials[re]" placeholder="e.g., S.P." value="<?php echo htmlspecialchars($current_teacher_initials_for_session['re'] ?? ''); ?>"></div>
             </div>
-            <div class="row mb-2 subject-input-row p1p3-subject" id="lit1-block" style="display:none;">
+            <div class="row mb-2 subject-input-row p1p3-subject justify-content-center" id="lit1-block" style="display:none;">
                 <div class="col-md-5"><label for="lit1_file" class="form-label">Literacy I Results (.xlsx):</label><input type="file" class="form-control" id="lit1_file" name="subject_files[lit1]" accept=".xlsx"></div>
                 <div class="col-md-3"><label for="lit1_initials" class="form-label">Literacy I Initials:</label><input type="text" class="form-control" id="lit1_initials" name="teacher_initials[lit1]" placeholder="e.g., K.L." value="<?php echo htmlspecialchars($current_teacher_initials_for_session['lit1'] ?? ''); ?>"></div>
             </div>
-            <div class="row mb-2 subject-input-row p1p3-subject" id="lit2-block" style="display:none;">
+            <div class="row mb-2 subject-input-row p1p3-subject justify-content-center" id="lit2-block" style="display:none;">
                 <div class="col-md-5"><label for="lit2_file" class="form-label">Literacy II Results (.xlsx):</label><input type="file" class="form-control" id="lit2_file" name="subject_files[lit2]" accept=".xlsx"></div>
                 <div class="col-md-3"><label for="lit2_initials" class="form-label">Literacy II Initials:</label><input type="text" class="form-control" id="lit2_initials" name="teacher_initials[lit2]" placeholder="e.g., M.N." value="<?php echo htmlspecialchars($current_teacher_initials_for_session['lit2'] ?? ''); ?>"></div>
             </div>
-             <div class="row mb-2 subject-input-row p1p3-subject" id="local_lang-block" style="display:none;">
+             <div class="row mb-2 subject-input-row p1p3-subject justify-content-center" id="local_lang-block" style="display:none;">
                 <div class="col-md-5"><label for="local_lang_file" class="form-label">Local Language Results (.xlsx):</label><input type="file" class="form-control" id="local_lang_file" name="subject_files[local_lang]" accept=".xlsx"></div>
                 <div class="col-md-3"><label for="local_lang_initials" class="form-label">Local Language Initials:</label><input type="text" class="form-control" id="local_lang_initials" name="teacher_initials[local_lang]" placeholder="e.g., O.P." value="<?php echo htmlspecialchars($current_teacher_initials_for_session['local_lang'] ?? ''); ?>"></div>
             </div>
 
             <!-- P4-P7 Specific Subjects -->
-            <div class="row mb-2 subject-input-row p4p7-subject" id="science-block" style="display:none;">
+            <div class="row mb-2 subject-input-row p4p7-subject justify-content-center" id="science-block" style="display:none;">
                 <div class="col-md-5"><label for="science_file" class="form-label">Science Results (.xlsx):</label><input type="file" class="form-control" id="science_file" name="subject_files[science]" accept=".xlsx"></div>
                 <div class="col-md-3"><label for="science_initials" class="form-label">Science Teacher Initials:</label><input type="text" class="form-control" id="science_initials" name="teacher_initials[science]" placeholder="e.g., C.E." value="<?php echo htmlspecialchars($current_teacher_initials_for_session['science'] ?? ''); ?>"></div>
             </div>
-            <div class="row mb-2 subject-input-row p4p7-subject" id="sst-block" style="display:none;">
+            <div class="row mb-2 subject-input-row p4p7-subject justify-content-center" id="sst-block" style="display:none;">
                 <div class="col-md-5"><label for="sst_file" class="form-label">SST Results (.xlsx):</label><input type="file" class="form-control" id="sst_file" name="subject_files[sst]" accept=".xlsx"></div>
                 <div class="col-md-3"><label for="sst_initials" class="form-label">SST Teacher Initials:</label><input type="text" class="form-control" id="sst_initials" name="teacher_initials[sst]" placeholder="e.g., F.G." value="<?php echo htmlspecialchars($current_teacher_initials_for_session['sst'] ?? ''); ?>"></div>
             </div>
-            <div class="row mb-3 subject-input-row p4p7-subject" id="kiswahili-block" style="display:none;">
+            <div class="row mb-3 subject-input-row p4p7-subject justify-content-center" id="kiswahili-block" style="display:none;">
                 <div class="col-md-5"><label for="kiswahili_file" class="form-label">Kiswahili Results (.xlsx) <small class='text-muted'>(Optional for P4-P7)</small>:</label><input type="file" class="form-control" id="kiswahili_file" name="subject_files[kiswahili]" accept=".xlsx"></div>
                 <div class="col-md-3"><label for="kiswahili_initials" class="form-label">Kiswahili Teacher Initials:</label><input type="text" class="form-control" id="kiswahili_initials" name="teacher_initials[kiswahili]" placeholder="e.g., H.I." value="<?php echo htmlspecialchars($current_teacher_initials_for_session['kiswahili'] ?? ''); ?>"></div>
             </div>
+            </div></div> <!-- Close Subject Files Card -->
 
+            <div class="card mb-4"><div class="card-body"> <!-- General Remarks Card -->
             <h5 class="mt-4">General Remarks (Manual - to be replaced by auto-remarks later)</h5>
             <div class="mb-3"><label for="class_teacher_remarks" class="form-label">Class Teacher's Remarks:</label><textarea class="form-control" id="class_teacher_remarks" name="class_teacher_remarks" rows="3"></textarea></div>
             <div class="mb-3"><label for="head_teacher_remarks" class="form-label">Head Teacher's Remarks:</label><textarea class="form-control" id="head_teacher_remarks" name="head_teacher_remarks" rows="3"></textarea></div>
+            </div></div> <!-- Close General Remarks Card -->
 
             <div class="d-grid gap-2 col-6 mx-auto mt-4 mb-5"><button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-cogs"></i> Process & Save Data</button></div>
+            </div></div> <!-- Close Overall Form Width Wrapper -->
         </form>
     </div>
-    <footer class="text-center mt-5 mb-3"><p>&copy; <span id="currentYear"></span> Maria Owembabazi Primary School - <i>Good Christian, Good Citizen</i></p></footer>
+    <footer class="text-center mt-5 mb-3"><p>&copy; <span id="currentYear"></span> Maria Ow'embabazi Primary School - <i>Good Christian, Good Citizen</i></p></footer>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="js/script.js"></script> <!-- js/script.js is assumed to be the same as before -->
 </body>

@@ -81,7 +81,7 @@ try {
 
     $pdfFileName = 'Report_Cards_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $batchSettingsData['class_name']) . '_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $batchSettingsData['term_name']) . '_' . $batchSettingsData['year_name'] . '.pdf';
     $mpdf->SetTitle('Report Cards - ' . $batchSettingsData['class_name'] . ' Term ' . $batchSettingsData['term_name'] . ' ' . $batchSettingsData['year_name']);
-    $mpdf->SetAuthor('Maria Owembabazi Primary School');
+    $mpdf->SetAuthor("MARIA OW'EMBABAZI PRIMARY SCHOOL");
     $mpdf->SetCreator('Report Card System');
 
     $firstPage = true; // Initialize flag for first page handling
