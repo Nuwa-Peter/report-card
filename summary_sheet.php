@@ -38,6 +38,11 @@ if ($batchSettings) {
         $coreSubjectKeysP4_P7 = ['english', 'mtc', 'science', 'sst'];
     }
     // p1p3SubjectKeys definition not strictly needed here as we iterate student summaries
+    // Fetch enriched data here to make it available for both P1-P3 and P4-P7 logic
+    $enrichedStudentDataForBatch = [];
+    if ($batch_id) { // Ensure batch_id is set before trying to use it for session key
+        $enrichedStudentDataForBatch = $_SESSION['enriched_students_data_for_batch_' . $batch_id] ?? [];
+    }
 }
 
 $subjectDisplayNames = [
@@ -56,6 +61,29 @@ $divisionSummaryP4P7 = [
 $gradeSummaryP4P7 = []; // [subject_code => [grade => count]]
 
 if ($isP4_P7 && $batch_id) {
+    // Sort students by aggregate points for P4-P7
+    $p4p7StudentListForDisplay = $studentsSummaries; // Copy
+    if (!empty($p4p7StudentListForDisplay)) { // Ensure array is not empty before sorting
+        uasort($p4p7StudentListForDisplay, function($a, $b) {
+            $aggA = $a['p4p7_aggregate_points'];
+            $aggB = $b['p4p7_aggregate_points'];
+
+            // Handle non-numeric cases (like 'N/A', null, or empty strings)
+            $isNumA = is_numeric($aggA);
+            $isNumB = is_numeric($aggB);
+
+            if ($isNumA && $isNumB) {
+                return (float)$aggA <=> (float)$aggB; // Numeric comparison
+            } elseif ($isNumA) {
+                return -1; // Numeric is better than non-numeric
+            } elseif ($isNumB) {
+                return 1;  // Non-numeric is worse than numeric
+            } else {
+                return 0;  // Both non-numeric, treat as equal for sorting
+            }
+        });
+    }
+
     foreach ($studentsSummaries as $student) {
         // $student['p4p7_division'] will now be 'I', 'II', 'U', 'X' etc. from the database
         $division = $student['p4p7_division'] ?? 'Ungraded';
@@ -67,7 +95,7 @@ if ($isP4_P7 && $batch_id) {
     }
 
     // P4-P7 Grade Distribution (using session data as interim)
-    $enrichedStudentDataForBatch = $_SESSION['enriched_students_data_for_batch_' . $batch_id] ?? [];
+    // $enrichedStudentDataForBatch = $_SESSION['enriched_students_data_for_batch_' . $batch_id] ?? []; // Moved higher
     if (!empty($enrichedStudentDataForBatch) && !empty($coreSubjectKeysP4_P7)) {
         foreach ($coreSubjectKeysP4_P7 as $coreSubKey) {
             $gradeSummaryP4P7[$coreSubKey] = ['D1'=>0, 'D2'=>0, 'C3'=>0, 'C4'=>0, 'C5'=>0, 'C6'=>0, 'P7'=>0, 'P8'=>0, 'F9'=>0, 'N/A'=>0];
@@ -87,7 +115,42 @@ if ($isP4_P7 && $batch_id) {
 // P1-P3 Summary Data Calculation (if batch is selected)
 $p1p3StudentListForDisplay = [];
 $classAverageP1P3 = 0;
+$p1p3SubjectScoreDistribution = []; // Initialize for P1-P3 subject scores
+
 if ($isP1_P3 && $batch_id) {
+    $p1p3SubjectKeys = ['english', 'mtc', 're', 'lit1', 'lit2', 'local_lang']; // Define P1-P3 subjects
+    $scoreBands = [
+        '0-39' => 0, '40-49' => 0, '50-59' => 0, '60-69' => 0,
+        '70-79' => 0, '80-89' => 0, '90-100' => 0, 'N/A' => 0
+    ];
+
+    if (!empty($enrichedStudentDataForBatch) && !empty($p1p3SubjectKeys)) {
+        foreach ($p1p3SubjectKeys as $subjectKey) {
+            $p1p3SubjectScoreDistribution[$subjectKey] = $scoreBands; // Initialize for each subject
+            foreach ($enrichedStudentDataForBatch as $studentId => $studentEnrichedData) {
+                // Ensure subject data exists for the student to avoid undefined index errors
+                $eotScore = $studentEnrichedData['subjects'][$subjectKey]['eot_score'] ?? 'N/A';
+                $band = 'N/A';
+                if (is_numeric($eotScore)) {
+                    $eotScoreNum = (float)$eotScore; // Use a different var name to avoid confusion
+                    if ($eotScoreNum >= 90) $band = '90-100';
+                    else if ($eotScoreNum >= 80) $band = '80-89';
+                    else if ($eotScoreNum >= 70) $band = '70-79';
+                    else if ($eotScoreNum >= 60) $band = '60-69';
+                    else if ($eotScoreNum >= 50) $band = '50-59';
+                    else if ($eotScoreNum >= 40) $band = '40-49';
+                    else $band = '0-39';
+                }
+                // Ensure the band exists before incrementing
+                if (isset($p1p3SubjectScoreDistribution[$subjectKey][$band])) {
+                     $p1p3SubjectScoreDistribution[$subjectKey][$band]++;
+                } else {
+                     $p1p3SubjectScoreDistribution[$subjectKey]['N/A']++; // Fallback for safety
+                }
+            }
+        }
+    }
+
     $p1p3StudentListForDisplay = $studentsSummaries;
     uasort($p1p3StudentListForDisplay, function($a, $b) {
         return ($a['p1p3_position_in_class'] ?? PHP_INT_MAX) <=> ($b['p1p3_position_in_class'] ?? PHP_INT_MAX);
@@ -203,6 +266,40 @@ $divisionChartLabels = [
                         <canvas id="p4p7DivisionChart"></canvas>
                     </div>
                 </div>
+
+                <div class="row">
+                    <div class="col-md-9 mx-auto">
+                        <h3>Student Performance List</h3>
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover summary-table">
+                                <thead class="table-primary">
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Student Name</th>
+                                        <th>Aggregate</th>
+                                        <th>Division</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php /* Check if $p4p7StudentListForDisplay is not empty before looping */ ?>
+                                    <?php if (!empty($p4p7StudentListForDisplay)): ?>
+                                        <?php $rowNum = 0; foreach ($p4p7StudentListForDisplay as $student): $rowNum++; ?>
+                                        <tr>
+                                            <td><?php echo $rowNum; ?></td>
+                                            <td><?php echo htmlspecialchars($student['student_name']); ?></td>
+                                            <td><?php echo htmlspecialchars($student['p4p7_aggregate_points'] ?? 'N/A'); ?></td>
+                                            <td><?php echo htmlspecialchars($student['p4p7_division'] ?? 'N/A'); ?></td>
+                                        </tr>
+                                        <?php endforeach; ?>
+                                    <?php else: ?>
+                                        <tr><td colspan="4">No student summary data available to display.</td></tr>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- ... P4-P7 Grade Distribution section (largely unchanged, uses D1-F9 grades) ... -->
                  <h3>Subject Grade Distribution</h3>
                 <?php if (!empty($gradeSummaryP4P7)): ?>
@@ -241,11 +338,14 @@ $divisionChartLabels = [
                 <!-- ... P1-P3 summary table and chart canvas (unchanged) ... -->
                  <h3>Performance Summary (P1-P3)</h3>
                 <p><strong>Overall Class Average End of Term Score:</strong> <?php echo htmlspecialchars($classAverageP1P3); ?>%</p>
-                <div class="row">
-                    <div class="col-md-7 table-responsive">
-                        <table class="table table-striped table-hover summary-table">
-                            <thead class="table-primary">
-                                <tr><th>#</th><th>Student Name</th><th>Total EOT Score</th><th>Average EOT Score (%)</th><th>Position</th></tr>
+
+                <!-- Student List Table in its own centered row -->
+                <div class="row justify-content-center">
+                    <div class="col-md-9">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover summary-table">
+                                <thead class="table-primary">
+                                    <tr><th>#</th><th>Student Name</th><th>Total EOT Score</th><th>Average EOT Score (%)</th><th>Position</th></tr>
                             </thead>
                             <tbody>
                                 <?php $rowNum = 0; foreach ($p1p3StudentListForDisplay as $student): $rowNum++; ?>
@@ -258,13 +358,41 @@ $divisionChartLabels = [
                                 </tr>
                                 <?php endforeach; ?>
                             </tbody>
-                        </table>
-                    </div>
-                    <div class="col-md-5">
-                         <canvas id="p1p3AverageDistributionChart"></canvas>
-                         <p class="text-center small mt-2">Distribution of Average Scores</p>
+                            </table>
+                        </div>
                     </div>
                 </div>
+
+                <?php if (!empty($p1p3SubjectScoreDistribution)): ?>
+                    <h3 class="mt-4">Per-Subject End of Term Score Distribution</h3>
+                    <?php foreach ($p1p3SubjectKeys as $subjectKey): ?>
+                        <?php $subjectDisplayName = htmlspecialchars($subjectDisplayNames[$subjectKey] ?? ucfirst($subjectKey)); ?>
+                        <h5><?php echo $subjectDisplayName; ?></h5>
+                        <div class="row">
+                            <div class="col-md-7 table-responsive">
+                                <table class="table table-sm table-bordered summary-table">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <?php foreach (array_keys($scoreBands) as $bandLabel): ?>
+                                                <th><?php echo $bandLabel; ?></th>
+                                            <?php endforeach; ?>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <?php foreach ($scoreBands as $bandLabel => $defaultCount): ?>
+                                                <td><?php echo $p1p3SubjectScoreDistribution[$subjectKey][$bandLabel] ?? 0; ?></td>
+                                            <?php endforeach; ?>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="col-md-5">
+                                <canvas id="p1p3_subject_chart_<?php echo $subjectKey; ?>"></canvas>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
             <?php endif; ?>
         <?php else: ?>
             <!-- ... select batch message (unchanged) ... -->
@@ -336,39 +464,62 @@ document.addEventListener('DOMContentLoaded', function () {
         <?php endforeach; ?>
     <?php endif; ?>
     <?php elseif ($batch_id && $batchSettings && $isP1_P3 && !empty($p1p3StudentListForDisplay)): ?>
-    // ... P1-P3 Chart JS (unchanged) ...
-    const p1p3AvgCtx = document.getElementById('p1p3AverageDistributionChart');
-    if (p1p3AvgCtx) {
-        const averages = <?php echo json_encode(array_column($p1p3StudentListForDisplay, 'p1p3_average_eot_score')); ?>;
-        let scoreRanges = {'0-39':0, '40-49':0, '50-59':0, '60-69':0, '70-79':0, '80-89':0, '90-100':0};
-        averages.forEach(avg => {
-            if(avg === null || avg === 'N/A') return;
-            let numericAvg = parseFloat(avg);
-            if(numericAvg >= 90) scoreRanges['90-100']++;
-            else if(numericAvg >= 80) scoreRanges['80-89']++;
-            else if(numericAvg >= 70) scoreRanges['70-79']++;
-            else if(numericAvg >= 60) scoreRanges['60-69']++;
-            else if(numericAvg >= 50) scoreRanges['50-59']++;
-            else if(numericAvg >= 40) scoreRanges['40-49']++;
-            else scoreRanges['0-39']++;
-        });
-        if (Object.values(scoreRanges).some(count => count > 0)) { // Only create chart if there's data
-            new Chart(p1p3AvgCtx, {
-                type: 'bar',
-                data: {
-                    labels: Object.keys(scoreRanges),
-                    datasets: [{
-                        label: 'Average Score Distribution',
-                        data: Object.values(scoreRanges),
-                        backgroundColor: 'rgba(75, 192, 192, 0.5)',
-                        borderColor: 'rgba(75, 192, 192, 1)',
-                        borderWidth: 1
-                    }]
-                },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
-            });
-        }
-    }
+    // ... P1-P3 Chart JS (Overall Average Line Chart REMOVED) ...
+
+    <?php /* JavaScript for P1-P3 Per-Subject EOT Score Distribution Charts */ ?>
+    <?php if (!empty($p1p3SubjectScoreDistribution)): ?>
+        <?php foreach ($p1p3SubjectKeys as $subjectKey): ?>
+            <?php
+                $chartDataForSubject = $p1p3SubjectScoreDistribution[$subjectKey] ?? $scoreBands;
+                $chartLabels = array_keys($chartDataForSubject);
+                $chartCounts = array_values($chartDataForSubject);
+            ?>
+            const p1p3SubjectCtx_<?php echo $subjectKey; ?> = document.getElementById('p1p3_subject_chart_<?php echo $subjectKey; ?>');
+            if (p1p3SubjectCtx_<?php echo $subjectKey; ?>) {
+                const subjectCounts_<?php echo $subjectKey; ?> = <?php echo json_encode($chartCounts); ?>;
+                const maxCount_<?php echo $subjectKey; ?> = Math.max(0, ...subjectCounts_<?php echo $subjectKey; ?>);
+                let suggestedMaxY_<?php echo $subjectKey; ?>;
+                if (maxCount_<?php echo $subjectKey; ?> === 0) {
+                    suggestedMaxY_<?php echo $subjectKey; ?> = 5;
+                } else if (maxCount_<?php echo $subjectKey; ?> <= 2) {
+                    suggestedMaxY_<?php echo $subjectKey; ?> = maxCount_<?php echo $subjectKey; ?> + 2;
+                } else if (maxCount_<?php echo $subjectKey; ?> <= 5) {
+                    suggestedMaxY_<?php echo $subjectKey; ?> = maxCount_<?php echo $subjectKey; ?> + Math.ceil(maxCount_<?php echo $subjectKey; ?> * 0.4);
+                } else {
+                    suggestedMaxY_<?php echo $subjectKey; ?> = maxCount_<?php echo $subjectKey; ?> + Math.ceil(maxCount_<?php echo $subjectKey; ?> * 0.2);
+                }
+                suggestedMaxY_<?php echo $subjectKey; ?> = Math.ceil(suggestedMaxY_<?php echo $subjectKey; ?>);
+
+                if (subjectCounts_<?php echo $subjectKey; ?>.some(count => count > 0)) { // Only create chart if there's data
+                    new Chart(p1p3SubjectCtx_<?php echo $subjectKey; ?>, {
+                        type: 'bar',
+                        data: {
+                            labels: <?php echo json_encode($chartLabels); ?>,
+                            datasets: [{
+                                label: 'Score Distribution for <?php echo htmlspecialchars($subjectDisplayNames[$subjectKey] ?? ucfirst($subjectKey)); ?>',
+                                data: subjectCounts_<?php echo $subjectKey; ?>,
+                                backgroundColor: 'rgba(23, 162, 184, 0.5)', // Bootstrap info color, semi-transparent
+                                borderColor: 'rgba(23, 162, 184, 1)',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    suggestedMax: suggestedMaxY_<?php echo $subjectKey; ?>,
+                                    ticks: { precision: 0 }
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+        <?php endforeach; ?>
+    <?php endif; ?>
     <?php endif; ?>
 });
 </script>
