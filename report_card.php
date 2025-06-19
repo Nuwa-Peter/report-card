@@ -93,11 +93,10 @@ $teacherInitials = $teacherInitials ?? ($_SESSION['current_teacher_initials'] ??
             min-height: 275mm;
             margin: 10mm auto;
             padding: 10mm;
-            border: 1px solid #ccc;
-            box-shadow: 0 0 8px rgba(0,0,0,0.1);
             background-color: white;
             position: relative;
             box-sizing: border-box;
+            /* All border, outline, and box-shadow properties removed */
         }
         /* .watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.06; z-index: 0; pointer-events: none; width: 150mm; height: auto; } */
         .header { text-align: center; margin-bottom: 3.5mm; margin-top: 0; }
@@ -162,16 +161,39 @@ $teacherInitials = $teacherInitials ?? ($_SESSION['current_teacher_initials'] ??
         .term-dates { font-size: 8pt; margin-top: 2.5mm; margin-bottom: 2.5mm; text-align: center; border-top: 1px dashed #ccc; border-bottom: 1px dashed #ccc; padding: 1mm 0;}
         .term-dates strong {font-weight:bold;}
         .additional-note-p4p7 { font-size: 8pt; margin-top: 2.5mm; margin-bottom: 2.5mm; text-align: center; font-style: italic; }
-        .grading-scale-section-p4p7 { margin-top: 2.5mm; font-size: 7.5pt; text-align:center; }
-        .grading-scale-section-p4p7 strong { display: block; margin-bottom: 1mm; font-weight: bold; }
-        .grading-scale-section-p4p7 .scale-container { display: inline-block; text-align:left; padding: 0; margin:0;}
-        .grading-scale-section-p4p7 .scale-item { display: inline-block; margin: 0.5mm 1.2mm; white-space:nowrap; border: 1px solid #eee; padding: 0.5mm 1mm; border-radius: 3px;}
+        .grading-scale-section-p4p7 {
+            margin-top: 2.5mm;
+            font-size: 7.5pt;
+            text-align:center; /* Ensure this is active */
+            /* display: flex; flex-direction: column; align-items: center; */ /* Flexbox properties removed */
+        }
+        .grading-scale-section-p4p7 strong {
+            display: block; /* Preserved */
+            margin-bottom: 1mm; /* Preserved */
+            font-weight: bold; /* Preserved */
+            /* margin-left: auto; margin-right: auto; */ /* Not strictly needed if parent is text-align:center and this is display:block */
+        }
+        .grading-scale-section-p4p7 .scale-container {
+            display: inline-block; /* Centered by parent's text-align:center */
+            text-align: center;   /* Centers its children (the scale-items) */
+            padding: 0;           /* Preserved */
+            /* margin-left: auto; and margin-right: auto; removed */
+        }
+        .grading-scale-section-p4p7 .scale-item {
+            display: inline-block; /* Preserved */
+            text-align: left;      /* Text within each item is left-aligned */
+            margin: 0.5mm 1.2mm;   /* Preserved */
+            white-space:nowrap;    /* Preserved */
+            border: 1px solid #eee;/* Preserved */
+            padding: 0.5mm 1mm;    /* Preserved */
+            border-radius: 3px;    /* Preserved */
+        }
         .grading-scale-section-p4p7 .scale-item strong {font-weight:bold; display:inline;}
         .footer { text-align: center; font-size: 9.5pt; margin-top: 4mm; border-top: 1px solid #000; padding-top: 1.5mm; }
         .footer i { font-style: italic; font-size:10.5pt; }
         @media print {
             body { margin: 0; padding: 0; background-color: #fff; font-size:9pt; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .report-card-container { width: 100%; min-height: unset; margin: 0; border: none; box-shadow: none; padding: 7mm; page-break-after: always; }
+            .report-card-container { width: 100%; min-height: unset; margin: 0; border: none; box-shadow: none; padding: 7mm; /* page-break-after: always; */ }
             .watermark { opacity: 0.05; width: 140mm; }
             .non-printable { display: none; }
             .academic-summary-grid, .p1p3-performance-summary-after-table, .results-table th, .results-table .summary-row td { background-color: #e9e9e9 !important; }
@@ -243,11 +265,11 @@ $teacherInitials = $teacherInitials ?? ($_SESSION['current_teacher_initials'] ??
                     ?>
                     <tr>
                         <td class="subject-name"><?php echo $subjDisplayName; ?></td>
-                        <td><?php echo htmlspecialchars($subjectPerformance['bot_score'] ?? 'N/A'); ?></td>
+                        <td><?php $bs = $subjectPerformance['bot_score'] ?? 'N/A'; echo htmlspecialchars(is_numeric($bs) ? round((float)$bs) : $bs); ?></td>
                         <?php if (!$isP1_P3): ?><td><?php echo $bot_grade; ?></td><?php endif; ?>
-                        <td><?php echo htmlspecialchars($subjectPerformance['mot_score'] ?? 'N/A'); ?></td>
+                        <td><?php $ms = $subjectPerformance['mot_score'] ?? 'N/A'; echo htmlspecialchars(is_numeric($ms) ? round((float)$ms) : $ms); ?></td>
                         <?php if (!$isP1_P3): ?><td><?php echo $mot_grade; ?></td><?php endif; ?>
-                        <td><?php echo htmlspecialchars($subjectPerformance['eot_score'] ?? 'N/A'); ?></td>
+                        <td><?php $es = $subjectPerformance['eot_score'] ?? 'N/A'; echo htmlspecialchars(is_numeric($es) ? round((float)$es) : $es); ?></td>
                         <?php if (!$isP1_P3): ?><td><?php echo $eot_grade; ?></td><?php endif; ?>
                         <?php if ($isP1_P3): ?><td><?php echo $subject_term_average; ?></td><?php endif; ?>
                         <td><?php echo $eot_remark; ?></td>
@@ -284,7 +306,7 @@ $teacherInitials = $teacherInitials ?? ($_SESSION['current_teacher_initials'] ??
 
         <?php if ($isP1_P3): ?>
         <div class="p1p3-performance-summary-after-table">
-            <strong>Total End of Term Score:</strong> <?php echo $p1p3TotalEOT; ?> &nbsp; &nbsp; | &nbsp; &nbsp;
+            <strong>Total End of Term Score:</strong> <?php echo (is_numeric($p1p3TotalEOT) ? round((float)$p1p3TotalEOT) : $p1p3TotalEOT); ?> &nbsp; &nbsp; | &nbsp; &nbsp;
             <strong>Average End of Term Score:</strong> <?php echo $p1p3AverageEOT; ?>%
         </div>
         <?php endif; ?>
@@ -298,7 +320,6 @@ $teacherInitials = $teacherInitials ?? ($_SESSION['current_teacher_initials'] ??
             Next Term Begins On: <strong><?php echo $nextTermBeginDateFormatted; ?></strong>
         </div>
         <?php if ($isP4_P7): ?>
-        <div class="additional-note-p4p7">Additional Note: Please ensure regular attendance and parental support for optimal performance.</div>
         <div class="grading-scale-section-p4p7">
             <strong>GRADING SCALE</strong>
             <div class="scale-container">
@@ -307,6 +328,7 @@ $teacherInitials = $teacherInitials ?? ($_SESSION['current_teacher_initials'] ??
                 <?php endforeach; ?>
             </div>
         </div>
+        <div class="additional-note-p4p7">Additional Note: Please ensure regular attendance and parental support for optimal performance.</div>
         <?php endif; ?>
         <div class="footer"><i>Good Christian, Good Citizen</i></div>
     </div><!-- report-card-container -->

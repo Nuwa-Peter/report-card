@@ -84,8 +84,35 @@ try {
     $mpdf->SetAuthor('Maria Owembabazi Primary School');
     $mpdf->SetCreator('Report Card System');
 
+    $firstPage = true; // Initialize flag for first page handling
+
     // --- Loop Through Students & Generate HTML for Each Report ---
     foreach ($studentIdsInBatch as $student_id) { // $student_id is now correctly defined for use here
+
+        if (!$firstPage) {
+            $mpdf->AddPage();
+
+            // Border drawing commands START (only if not first page)
+            $outerBorderX = 7; $outerBorderY = 7; $pageWidth = 210; $pageHeight = 297;
+            $outerBorderWidth = $pageWidth - (2 * $outerBorderX);
+            $outerBorderHeight = $pageHeight - (2 * $outerBorderY);
+            $gapBetweenBorders = 2;
+
+            $mpdf->SetDrawColor(0, 0, 0); // Black
+            $mpdf->SetLineWidth(0.8);    // Approx 2.25pt
+            $mpdf->Rect($outerBorderX, $outerBorderY, $outerBorderWidth, $outerBorderHeight, 'D');
+
+            $mpdf->SetLineWidth(0.2);    // Approx 0.57pt
+            $innerBorderX = $outerBorderX + $gapBetweenBorders;
+            $innerBorderY = $outerBorderY + $gapBetweenBorders;
+            $innerBorderWidth = $outerBorderWidth - (2 * $gapBetweenBorders);
+            $innerBorderHeight = $outerBorderHeight - (2 * $gapBetweenBorders);
+            $mpdf->Rect($innerBorderX, $innerBorderY, $innerBorderWidth, $innerBorderHeight, 'D');
+            $mpdf->SetLineWidth(0.2); // Reset
+            // Border drawing commands END
+        }
+        $firstPage = false; // This must be outside the if, to correctly manage $firstPage state for next iteration
+
         $sessionKeyForEnrichedData = 'enriched_students_data_for_batch_' . $batch_id;
         if (!isset($_SESSION[$sessionKeyForEnrichedData][$student_id])) {
             throw new Exception("Enriched student data not found in session for student ID $student_id and batch ID $batch_id. Please run calculations first.");
