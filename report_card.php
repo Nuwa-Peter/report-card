@@ -90,13 +90,16 @@ $teacherInitials = $teacherInitials ?? ($_SESSION['current_teacher_initials'] ??
         body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; margin: 0; padding: 0; background-color: #f0f0f0; font-size: 9.5pt; color: #000; }
         .report-card-container {
             width: 190mm;
-            min-height: 275mm;
+            /* min-height: 275mm; */ /* Removed */
+            height: 261mm; /* Added fixed height */
             margin: 10mm auto;
-            padding: 10mm;
+            padding: 10mm; /* Adjusted padding back to 10mm */
             background-color: white;
             position: relative;
             box-sizing: border-box;
             /* All border, outline, and box-shadow properties removed */
+            display: flex;
+            flex-direction: column;
         }
         /* .watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.06; z-index: 0; pointer-events: none; width: 150mm; height: auto; } */
         .header { text-align: center; margin-bottom: 3.5mm; margin-top: 0; }
@@ -106,9 +109,9 @@ $teacherInitials = $teacherInitials ?? ($_SESSION['current_teacher_initials'] ??
         .header .school-details { font-size: 8pt; margin: 0.25mm 0; color: #000; }
         .header .report-title { font-size: 16pt; font-weight: bold; margin-top: 2mm; text-transform: uppercase; color: #000; letter-spacing: 1px; }
         .student-details-block { margin-bottom: 2.5mm; }
-        .student-info-grid { display: grid; grid-template-columns: auto 1fr auto 1fr; gap: 1mm 3mm; font-size: 9pt; margin-bottom:0.5mm;}
+        .student-info-grid { display: grid; grid-template-columns: auto 1fr auto 1fr; gap: 1mm 3mm; font-size: 10pt; margin-bottom:0.5mm;} /* Changed to 10pt */
         .student-info-grid strong {font-weight: bold;}
-        .lin-number-display {font-size: 8.5pt; text-align: left; margin-top: 0.5mm;}
+        .lin-number-display {font-size: 9.5pt; text-align: left; margin-top: 0.5mm;} /* Changed to 9.5pt */
         .lin-number-display strong {font-weight: bold;}
         .academic-summary-grid { display: grid; grid-template-columns: auto 1fr auto 1fr; gap: 1mm 3mm; margin-bottom: 2.5mm; font-size: 9pt; background-color: #f0f0f0; padding: 1.5mm; border: 1px solid #ddd;}
         .academic-summary-grid strong {font-weight: bold;}
@@ -153,44 +156,43 @@ $teacherInitials = $teacherInitials ?? ($_SESSION['current_teacher_initials'] ??
 
         .results-table .summary-row td { background-color: #f8f9fa; font-weight: bold; }
         .p1p3-performance-summary-after-table { margin-top: 2mm; margin-bottom: 2mm; font-size: 8.5pt; border: 1px solid #eaeaea; padding: 1mm; background-color: #f9f9f9; text-align:center; }
-        .remarks-section { margin-top: 2.5mm; font-size: 9pt;}
+        .remarks-section { margin-top: 2.5mm; font-size: 9pt;} /* Base font size, children will override if specified */
         .remarks-section .remark-block { margin-bottom: 2mm; padding: 1.5mm; border: 1px solid #ddd; min-height: 15mm; }
-        .remarks-section strong { display: block; margin-bottom: 0.5mm; font-weight: bold; }
-        .remarks-section p { margin: 0 0 1mm 0; line-height: 1.25; }
-        .remarks-section .signature-line { margin-top: 4mm; border-top: 1px solid #000; width: 45mm; padding-top:0.5mm; font-size:8pt; text-align: center; }
-        .term-dates { font-size: 8pt; margin-top: 2.5mm; margin-bottom: 2.5mm; text-align: center; border-top: 1px dashed #ccc; border-bottom: 1px dashed #ccc; padding: 1mm 0;}
+        .remarks-section strong { display: block; margin-bottom: 0.5mm; font-weight: bold; font-size: 10pt; }
+        .remarks-section p { margin: 0 0 1mm 0; line-height: 1.25; font-size: 10pt; }
+        .remarks-section .signature-line { margin-top: 4mm; border-top: 1px solid #000; width: 45mm; padding-top:0.5mm; font-size:9pt; text-align: center; }
+        .term-dates { font-size: 12pt; margin-top: 2.5mm; margin-bottom: 2.5mm; text-align: center; border-top: 1px dashed #ccc; border-bottom: 1px dashed #ccc; padding: 1mm 0;} /* Changed to 12pt */
         .term-dates strong {font-weight:bold;}
-        .additional-note-p4p7 { font-size: 8pt; margin-top: 2.5mm; margin-bottom: 2.5mm; text-align: center; font-style: italic; }
+        .additional-note-p4p7 { font-size: 11pt; margin-top: 2.5mm; margin-bottom: 2.5mm; text-align: center; font-style: italic; } /* Remains 11pt */
         .grading-scale-section-p4p7 {
             margin-top: 2.5mm;
-            font-size: 7.5pt;
-            text-align:center; /* Ensure this is active */
-            /* display: flex; flex-direction: column; align-items: center; */ /* Flexbox properties removed */
+            font-size: 7.5pt; /* Base size for the section, children will override */
+            text-align:center;
         }
-        .grading-scale-section-p4p7 strong {
-            display: block; /* Preserved */
-            margin-bottom: 1mm; /* Preserved */
-            font-weight: bold; /* Preserved */
-            /* margin-left: auto; margin-right: auto; */ /* Not strictly needed if parent is text-align:center and this is display:block */
+        .grading-scale-section-p4p7 strong { /* "GRADING SCALE" heading */
+            display: block;
+            margin-bottom: 1mm;
+            font-weight: bold;
+            font-size: 11pt; /* Remains 11pt */
         }
         .grading-scale-section-p4p7 .scale-container {
-            display: inline-block; /* Centered by parent's text-align:center */
-            text-align: center;   /* Centers its children (the scale-items) */
-            padding: 0;           /* Preserved */
-            /* margin-left: auto; and margin-right: auto; removed */
+            display: inline-block;
+            text-align: center;
+            padding: 0;
         }
-        .grading-scale-section-p4p7 .scale-item {
-            display: inline-block; /* Preserved */
-            text-align: left;      /* Text within each item is left-aligned */
-            margin: 0.5mm 1.2mm;   /* Preserved */
-            white-space:nowrap;    /* Preserved */
-            border: 1px solid #eee;/* Preserved */
-            padding: 0.5mm 1mm;    /* Preserved */
-            border-radius: 3px;    /* Preserved */
+        .grading-scale-section-p4p7 .scale-item { /* e.g., "D1: 90-100" */
+            display: inline-block;
+            text-align: left;
+            margin: 0.5mm 1.2mm;
+            white-space:nowrap;
+            border: 1px solid #eee;
+            padding: 0.5mm 1mm;
+            border-radius: 3px;
+            font-size: 11pt; /* Remains 11pt */
         }
         .grading-scale-section-p4p7 .scale-item strong {font-weight:bold; display:inline;}
         .footer { text-align: center; font-size: 9.5pt; margin-top: 4mm; border-top: 1px solid #000; padding-top: 1.5mm; }
-        .footer i { font-style: italic; font-size:10.5pt; }
+        .footer i { font-style: italic; font-size:13pt; } /* Remains 13pt */
         @media print {
             body { margin: 0; padding: 0; background-color: #fff; font-size:9pt; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .report-card-container { width: 100%; min-height: unset; margin: 0; border: none; box-shadow: none; padding: 7mm; /* page-break-after: always; */ }
@@ -211,6 +213,7 @@ $teacherInitials = $teacherInitials ?? ($_SESSION['current_teacher_initials'] ??
             <div class="school-details">Tel. 0700172858 | Email: houseofnazareth.schools@gmail.com</div>
             <div class="report-title">TERMLY ACADEMIC REPORT</div>
         </div>
+        <div class="report-body-content" style="flex-grow: 1;"> <!-- Wrapper for main content -->
         <div class="student-details-block">
             <div class="student-info-grid">
                 <strong>STUDENT'S NAME:</strong> <span><?php echo $studentName; ?></span>
@@ -304,12 +307,7 @@ $teacherInitials = $teacherInitials ?? ($_SESSION['current_teacher_initials'] ??
             </tbody>
         </table>
 
-        <?php if ($isP1_P3): ?>
-        <div class="p1p3-performance-summary-after-table">
-            <strong>Total End of Term Score:</strong> <?php echo (is_numeric($p1p3TotalEOT) ? round((float)$p1p3TotalEOT) : $p1p3TotalEOT); ?> &nbsp; &nbsp; | &nbsp; &nbsp;
-            <strong>Average End of Term Score:</strong> <?php echo $p1p3AverageEOT; ?>%
-        </div>
-        <?php endif; ?>
+        <?php /* P1-P3 post-table summary div removed as requested */ ?>
 
         <div class="remarks-section">
             <div class="remark-block"><strong>Class Teacher's Remarks:</strong><p><?php echo $classTeacherRemark; ?></p><div class="signature-line">Class Teacher's Signature</div></div>
@@ -330,6 +328,7 @@ $teacherInitials = $teacherInitials ?? ($_SESSION['current_teacher_initials'] ??
         </div>
         <div class="additional-note-p4p7">Additional Note: Please ensure regular attendance and parental support for optimal performance.</div>
         <?php endif; ?>
+        </div> <!-- end .report-body-content -->
         <div class="footer"><i>Good Christian, Good Citizen</i></div>
     </div><!-- report-card-container -->
 </body>

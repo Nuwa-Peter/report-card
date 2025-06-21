@@ -34,13 +34,20 @@ $p1p3SubjectKeys = [];
 if ($batchSettings) {
     $isP1_P3 = in_array($batchSettings['class_name'], ['P1', 'P2', 'P3']);
     $isP4_P7 = in_array($batchSettings['class_name'], ['P4', 'P5', 'P6', 'P7']);
+
+    $expectedSubjectKeysForClass = []; // Initialize
     if ($isP4_P7) {
-        $coreSubjectKeysP4_P7 = ['english', 'mtc', 'science', 'sst'];
+        $coreSubjectKeysP4_P7 = ['english', 'mtc', 'science', 'sst']; // Used for charts
+        $expectedSubjectKeysForClass = ['english', 'mtc', 'science', 'sst', 'kiswahili']; // For P4-P7 tables
+    } elseif ($isP1_P3) {
+        // $p1p3SubjectKeys is defined correctly in the P1-P3 block later.
+        // $expectedSubjectKeysForClass will be populated with $p1p3SubjectKeys in that block for consistency if needed,
+        // but currently P1-P3 tables directly use $p1p3SubjectKeys.
+        $expectedSubjectKeysForClass = ['english', 'mtc', 're', 'lit1', 'lit2', 'local_lang']; // Also set for P1-P3 here for global availability if needed
     }
-    // p1p3SubjectKeys definition not strictly needed here as we iterate student summaries
-    // Fetch enriched data here to make it available for both P1-P3 and P4-P7 logic
+
     $enrichedStudentDataForBatch = [];
-    if ($batch_id) { // Ensure batch_id is set before trying to use it for session key
+    if ($batch_id) {
         $enrichedStudentDataForBatch = $_SESSION['enriched_students_data_for_batch_' . $batch_id] ?? [];
     }
 }
@@ -187,15 +194,47 @@ $divisionChartLabels = [
     <style>
         body { background-color: #e0f7fa; }
         .container.main-content { background-color: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-top: 20px; }
-        .summary-table th, .summary-table td { text-align: center; vertical-align: middle;}
+        .summary-table th, .summary-table td {
+            text-align: center;
+            vertical-align: middle;
+            font-size: 8.5pt; /* Adjusted font size */
+            padding: 0.2rem 0.2rem; /* Keep padding */
+        }
         .table-responsive { margin-bottom: 2rem; }
         h3, h4, h5 { margin-top: 1.5rem; color: #0056b3; }
         .print-button-container { margin-top: 20px; margin-bottom: 20px; text-align: right; }
         @media print {
-            body { background-color: #fff; } .non-printable { display: none !important; }
-            .container.main-content {box-shadow:none; border:none; margin-top:0; padding:5mm;}
-            .table th, .table td {font-size: 9pt;} h3,h4,h5 {font-size: 12pt; margin-top:1rem;}
-            canvas {max-width:100% !important; height:auto !important;}
+            @page {
+                size: landscape;
+                margin: 7mm; /* Adjusted margin */
+            }
+            body { background-color: #fff; }
+            .non-printable { display: none !important; }
+            .container.main-content {
+                box-shadow:none;
+                border:none;
+                margin-top:0;
+                padding:5mm;
+            }
+            /* General .table rule for print - can be overridden by .summary-table if needed */
+            .table th, .table td {
+                font-size: 8pt; /* Slightly smaller for general tables in print */
+                padding: 0.2rem;
+            }
+            .summary-table th, .summary-table td { /* Specific for summary tables */
+                font-size: 7pt !important;   /* Smaller for dense summary tables */
+                padding: 0.1rem !important;   /* Tighter padding */
+                overflow-wrap: break-word; /* Ensure content wraps in print */
+            }
+            h3, h4, h5 { /* Adjusted heading sizes for print */
+                font-size: 11pt !important;
+                margin-top: 0.4rem;
+                margin-bottom: 0.4rem;
+            }
+            canvas {
+                max-width:100% !important;
+                height:auto !important;
+            }
         }
     </style>
 </head>
@@ -244,6 +283,9 @@ $divisionChartLabels = [
         <?php if ($batch_id && $batchSettings): // Only display if a batch is selected and found ?>
             <div class="print-button-container non-printable">
                 <button onclick="window.print();" class="btn btn-info"><i class="fas fa-print"></i> Print Summary</button>
+                <a href="generate_summary_pdf.php?batch_id=<?php echo htmlspecialchars($batch_id); ?>" class="btn btn-danger ms-2" target="_blank" title="Download Landscape PDF Summary">
+                    <i class="fas fa-file-pdf"></i> Download PDF Summary
+                </a>
             </div>
 
             <?php if ($isP4_P7): ?>
@@ -276,8 +318,22 @@ $divisionChartLabels = [
                                     <tr>
                                         <th>#</th>
                                         <th>Student Name</th>
-                                        <th>Aggregate</th>
-                                        <th>Division</th>
+                                        <?php
+                                        // Use $expectedSubjectKeysForClass which should be set for P4-P7
+                                        $p4p7_subj_abbr_map = ['english'=>'ENG', 'mtc'=>'MTC', 'science'=>'SCI', 'sst'=>'SST', 'kiswahili'=>'KISW'];
+                                        foreach ($expectedSubjectKeysForClass as $subjKey):
+                                            $abbr = $p4p7_subj_abbr_map[$subjKey] ?? strtoupper(htmlspecialchars($subjKey)); ?>
+                                            <th colspan="3"><?php echo $abbr; ?></th>
+                                        <?php endforeach; ?>
+                                        <th>Agg.</th>
+                                        <th>Div.</th>
+                                    </tr>
+                                    <tr>
+                                        <th></th><th></th> <!-- Empty for #, Name -->
+                                        <?php foreach ($expectedSubjectKeysForClass as $subjKey): ?>
+                                            <th>BOT</th><th>MOT</th><th>EOT</th>
+                                        <?php endforeach; ?>
+                                        <th></th><th></th> <!-- Empty for Agg, Div -->
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -287,12 +343,24 @@ $divisionChartLabels = [
                                         <tr>
                                             <td><?php echo $rowNum; ?></td>
                                             <td><?php echo htmlspecialchars($student['student_name']); ?></td>
+                                            <?php foreach ($expectedSubjectKeysForClass as $subjKey): ?>
+                                                <?php
+                                                    $s_data = $enrichedStudentDataForBatch[$student['student_id']]['subjects'][$subjKey] ?? [];
+                                                    $bot = $s_data['bot_score'] ?? 'N/A';
+                                                    $mot = $s_data['mot_score'] ?? 'N/A';
+                                                    $eot = $s_data['eot_score'] ?? 'N/A';
+                                                ?>
+                                                <td><?php echo htmlspecialchars(is_numeric($bot) ? round((float)$bot) : $bot); ?></td>
+                                                <td><?php echo htmlspecialchars(is_numeric($mot) ? round((float)$mot) : $mot); ?></td>
+                                                <td><?php echo htmlspecialchars(is_numeric($eot) ? round((float)$eot) : $eot); ?></td>
+                                            <?php endforeach; ?>
                                             <td><?php echo htmlspecialchars($student['p4p7_aggregate_points'] ?? 'N/A'); ?></td>
                                             <td><?php echo htmlspecialchars($student['p4p7_division'] ?? 'N/A'); ?></td>
                                         </tr>
                                         <?php endforeach; ?>
                                     <?php else: ?>
-                                        <tr><td colspan="4">No student summary data available to display.</td></tr>
+                                        <?php $p4p7Colspan = 2 + (count($expectedSubjectKeysForClass) * 3) + 2; /* #, Name + (subjects*3) + Agg, Div */ ?>
+                                        <tr><td colspan="<?php echo $p4p7Colspan; ?>">No student summary data available to display.</td></tr>
                                     <?php endif; ?>
                                 </tbody>
                             </table>
@@ -345,19 +413,54 @@ $divisionChartLabels = [
                         <div class="table-responsive">
                             <table class="table table-striped table-hover summary-table">
                                 <thead class="table-primary">
-                                    <tr><th>#</th><th>Student Name</th><th>Total EOT Score</th><th>Average EOT Score (%)</th><th>Position</th></tr>
-                            </thead>
-                            <tbody>
-                                <?php $rowNum = 0; foreach ($p1p3StudentListForDisplay as $student): $rowNum++; ?>
-                                <tr>
-                                    <td><?php echo $rowNum; ?></td>
-                                    <td><?php echo htmlspecialchars($student['student_name']); ?></td>
-                                    <td><?php echo htmlspecialchars($student['p1p3_total_eot_score'] ?? 'N/A'); ?></td>
-                                    <td><?php echo htmlspecialchars($student['p1p3_average_eot_score'] ?? 'N/A'); ?></td>
-                                    <td><?php echo htmlspecialchars($student['p1p3_position_in_class'] ?? 'N/A'); ?></td>
-                                </tr>
-                                <?php endforeach; ?>
-                            </tbody>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Student Name</th>
+                                        <?php
+                                        // $p1p3SubjectKeys is defined in the P1-P3 block
+                                        $p1p3_subj_abbr_map = ['english'=>'ENG', 'mtc'=>'MTC', 're'=>'RE', 'lit1'=>'LIT1', 'lit2'=>'LIT2', 'local_lang'=>'LLANG'];
+                                        foreach ($p1p3SubjectKeys as $subjKey):
+                                            $abbr = $p1p3_subj_abbr_map[$subjKey] ?? strtoupper(htmlspecialchars($subjKey)); ?>
+                                            <th colspan="3"><?php echo $abbr; ?></th>
+                                        <?php endforeach; ?>
+                                        <th>Total EOT</th>
+                                        <th>Avg EOT (%)</th>
+                                        <th>Pos</th>
+                                    </tr>
+                                    <tr>
+                                        <th></th><th></th> <!-- Empty for #, Name -->
+                                        <?php foreach ($p1p3SubjectKeys as $subjKey): ?>
+                                            <th>BOT</th><th>MOT</th><th>EOT</th>
+                                        <?php endforeach; ?>
+                                        <th></th><th></th><th></th> <!-- Empty for Total, Avg, Pos -->
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php $rowNum = 0; foreach ($p1p3StudentListForDisplay as $student): $rowNum++; ?>
+                                    <tr>
+                                        <td><?php echo $rowNum; ?></td>
+                                        <td><?php echo htmlspecialchars($student['student_name']); ?></td>
+                                        <?php foreach ($p1p3SubjectKeys as $subjKey): ?>
+                                            <?php
+                                                $s_data = $enrichedStudentDataForBatch[$student['student_id']]['subjects'][$subjKey] ?? [];
+                                                $bot = $s_data['bot_score'] ?? 'N/A';
+                                                $mot = $s_data['mot_score'] ?? 'N/A';
+                                                $eot = $s_data['eot_score'] ?? 'N/A';
+                                            ?>
+                                            <td><?php echo htmlspecialchars(is_numeric($bot) ? round((float)$bot) : $bot); ?></td>
+                                            <td><?php echo htmlspecialchars(is_numeric($mot) ? round((float)$mot) : $mot); ?></td>
+                                            <td><?php echo htmlspecialchars(is_numeric($eot) ? round((float)$eot) : $eot); ?></td>
+                                        <?php endforeach; ?>
+                                        <td><?php echo htmlspecialchars($student['p1p3_total_eot_score'] ?? 'N/A'); ?></td>
+                                        <td><?php echo htmlspecialchars($student['p1p3_average_eot_score'] ?? 'N/A'); ?></td>
+                                        <td><?php echo htmlspecialchars($student['p1p3_position_in_class'] ?? 'N/A'); ?></td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                    <?php if (empty($p1p3StudentListForDisplay)): ?>
+                                        <?php $p1p3Colspan = 2 + (count($p1p3SubjectKeys) * 3) + 3; /* #, Name + (subjects*3) + Total, Avg, Pos */ ?>
+                                        <tr><td colspan="<?php echo $p1p3Colspan; ?>">No student summary data available to display.</td></tr>
+                                    <?php endif; ?>
+                                </tbody>
                             </table>
                         </div>
                     </div>

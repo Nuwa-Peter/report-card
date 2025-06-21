@@ -34,7 +34,15 @@ if ($isP4_P7) {
 }
 
 $gradingScalePointsMap = ['D1'=>1, 'D2'=>2, 'C3'=>3, 'C4'=>4, 'C5'=>5, 'C6'=>6, 'P7'=>7, 'P8'=>8, 'F9'=>9, 'N/A'=>0];
-$remarksScoreMap = [90=>'Outstanding', 80=>'Very Good', 70=>'Good', 60=>'Fair', 55=>'Satisfactory', 50=>'Average', 45=>'Pass', 40=>'Low Pass', 0=>'Fail', 'N/A' => 'N/A'];
+$remarksScoreMap = [
+    90 => 'Excellent',    // For scores 90-100
+    80 => 'Very Good',    // For scores 80-89
+    70 => 'Good',         // For scores 70-79
+    60 => 'Fair',         // For scores 60-69
+    50 => 'Tried',        // For scores 50-59
+    0  => 'Improve',      // For scores 0-49 (Note: key is 0, covers 0-49)
+    'N/A' => 'N/A'       // For non-numeric scores
+];
 
 $studentsRawDataFromDB = getStudentsWithScoresForBatch($pdo, $batch_id);
 $processedStudentsSummaryData = [];
