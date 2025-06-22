@@ -216,20 +216,17 @@ $divisionChartLabels = [
                 margin-top:0;
                 padding:5mm;
             }
-            /* General .table rule for print - can be overridden by .summary-table if needed */
-            .table th, .table td {
-                font-size: 8pt; /* Slightly smaller for general tables in print */
-                padding: 0.2rem;
+            /* Removed the general .table th, .table td rule for print to avoid conflicts */
+
+            .summary-table th, .summary-table td {
+                font-size: 10pt !important;
+                padding: 0.15rem !important;
+                overflow-wrap: break-word; /* Ensure content wraps */
             }
-            .summary-table th, .summary-table td { /* Specific for summary tables */
-                font-size: 7pt !important;   /* Smaller for dense summary tables */
-                padding: 0.1rem !important;   /* Tighter padding */
-                overflow-wrap: break-word; /* Ensure content wraps in print */
-            }
-            h3, h4, h5 { /* Adjusted heading sizes for print */
-                font-size: 11pt !important;
-                margin-top: 0.4rem;
-                margin-bottom: 0.4rem;
+            h3, h4, h5 {
+                font-size: 10pt !important;
+                margin-top: 0.5rem;
+                margin-bottom: 0.5rem;
             }
             canvas {
                 max-width:100% !important;
