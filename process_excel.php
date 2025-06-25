@@ -191,21 +191,10 @@ try {
 
 } catch (PDOException $e) {
     if ($pdo->inTransaction()) $pdo->rollBack();
-    // For production, use session messages. For active debugging, user can uncomment echo/exit lines.
-    // To enable browser debugging for these main catch blocks:
-    // echo "<h1>Main Database Error During Import</h1><pre>Error: " . htmlspecialchars($e->getMessage()) . "
-File: " . htmlspecialchars($e->getFile()) . "
-Line: " . $e->getLine() . "
-Trace: " . htmlspecialchars($e->getTraceAsString()) . "</pre>";
-    // exit;
+    // For production, use session messages.
     $_SESSION['error_message'] = "Database error during import: " . htmlspecialchars($e->getMessage()) . " (Details logged or check code at Line: " . $e->getLine() . " in " . basename($e->getFile()) . ")";
 } catch (Exception $e) {
     if ($pdo->inTransaction()) $pdo->rollBack();
-    // echo "<h1>Main Processing Error During Import</h1><pre>Error: " . htmlspecialchars($e->getMessage()) . "
-File: " . htmlspecialchars($e->getFile()) . "
-Line: " . $e->getLine() . "
-Trace: " . htmlspecialchars($e->getTraceAsString()) . "</pre>";
-    // exit;
     $_SESSION['error_message'] = "Processing error during import: " . htmlspecialchars($e->getMessage()) . " (Details logged or check code at Line: " . $e->getLine() . " in " . basename($e->getFile()) . ")";
 }
 
