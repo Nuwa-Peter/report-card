@@ -159,6 +159,19 @@ date_default_timezone_set('Africa/Kampala'); // Or user's preferred timezone
             <li>
                 <a href="about.php"><i class="fas fa-info-circle"></i> About & Help</a>
             </li>
+            <!--
+            <li>
+                <a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            </li>
+            -->
+            <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'superadmin'): ?>
+            <li class="mt-3 pt-2 border-top border-secondary-subtle"> <!-- Visually separate admin links -->
+                <p class="text-white-50 small ps-3 text-uppercase">Administration</p>
+            </li>
+            <li>
+                <a href="manage_users.php"><i class="fas fa-users-cog"></i> Manage Users</a>
+            </li>
+            <?php endif; ?>
         </ul>
     </nav>
 
@@ -170,8 +183,25 @@ date_default_timezone_set('Africa/Kampala'); // Or user's preferred timezone
                     <i class="fas fa-align-left"></i>
                     <span>Toggle Sidebar</span>
                 </button>
-                <div class="ms-auto datetime-display">
-                    <!-- Could put date/time here too or other quick info -->
+
+                <!-- Right aligned navbar items -->
+                <div class="ms-auto d-flex align-items-center">
+                    <?php if (isset($_SESSION['username'])): ?>
+                        <div class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle text-dark" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-user me-1"></i> <?php echo htmlspecialchars($_SESSION['username']); ?>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                                <li><a class="dropdown-item" href="profile.php"><i class="fas fa-user-circle me-2"></i>About User</a></li>
+                                <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>Others (Placeholder)</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="logout.php"><i class="fas fa-sign-out-alt me-2"></i>Sign Out</a></li>
+                            </ul>
+                        </div>
+                    <?php else: ?>
+                        <!-- Optional: Show a Login button if user is not logged in, though page protection should handle this -->
+                        <!-- <a href="login.php" class="btn btn-primary">Login</a> -->
+                    <?php endif; ?>
                 </div>
             </div>
         </nav>

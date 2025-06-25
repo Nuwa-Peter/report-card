@@ -96,8 +96,9 @@ $subjectDisplayNames = [
                 Maria Owembabazi P/S - Report System
             </a>
             <div>
-                <a href="data_entry.php" class="btn btn-outline-primary me-2"><i class="fas fa-plus-circle"></i> Import Another Batch</a> <!-- Corrected -->
-                <a href="index.php" class="btn btn-outline-secondary"><i class="fas fa-arrow-left"></i> Back to Dashboard</a> <!-- Corrected -->
+                <a href="data_entry.php" class="btn btn-outline-primary me-2"><i class="fas fa-plus-circle"></i> Import Another Batch</a>
+                <a href="index.php" class="btn btn-outline-secondary me-2"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+                <a href="logout.php" class="btn btn-outline-danger"><i class="fas fa-sign-out-alt"></i> Logout</a>
             </div>
         </div>
     </nav>

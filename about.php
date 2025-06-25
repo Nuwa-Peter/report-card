@@ -1,5 +1,18 @@
 <?php
-session_start();
+// Start session if not already started
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Check if user is logged in
+if (!isset($_SESSION['user_id'])) {
+    // Optional: Set a flash message for the login page
+    // $_SESSION['login_error_message'] = "You must be logged in to access this page.";
+    header('Location: login.php');
+    exit;
+}
+
+// Original PHP code from about.php (like date_default_timezone_set) follows here
 date_default_timezone_set('Africa/Kampala'); // Or user's preferred timezone
 ?>
 <!DOCTYPE html>
@@ -67,7 +80,10 @@ date_default_timezone_set('Africa/Kampala'); // Or user's preferred timezone
                 <img src="images/logo.png" alt="Logo" width="30" height="30" class="d-inline-block align-text-top me-2" onerror="this.style.display='none';">
                 Maria Ow'embabazi P/S - Report System
             </a>
-            <a href="index.php" class="btn btn-outline-secondary"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+            <div>
+                <a href="index.php" class="btn btn-outline-secondary me-2"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+                <a href="logout.php" class="btn btn-outline-danger"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            </div>
         </div>
     </nav>
 

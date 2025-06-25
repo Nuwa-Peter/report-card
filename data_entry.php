@@ -56,7 +56,10 @@ if(isset($_SESSION['report_data']) && !isset($_SESSION['last_processed_batch_id'
                 <img src="images/logo.png" alt="Logo" width="30" height="30" class="d-inline-block align-text-top me-2" onerror="this.style.display='none';">
                 Maria Ow'embabazi P/S - Report System
             </a>
-            <a href="index.php" class="btn btn-outline-secondary"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+            <div>
+                <a href="index.php" class="btn btn-outline-secondary me-2"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+                <a href="logout.php" class="btn btn-outline-danger"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            </div>
         </div>
     </nav>
 
