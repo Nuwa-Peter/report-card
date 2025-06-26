@@ -130,6 +130,10 @@ $subjectDisplayNames = [
         .search-container {
             position: relative; /* For absolute positioning of results */
         }
+        #studentSearchInput:focus {
+            border-color: #80bdff;
+            box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+        }
     </style>
 </head>
 <body>
@@ -192,9 +196,12 @@ $subjectDisplayNames = [
         </div>
 
         <div class="row mt-3 mb-2">
-            <div class="col-md-6 offset-md-3 search-container"> {/* Added search-container for positioning context */}
-                 <input type="text" id="studentSearchInput" class="form-control form-control-sm" placeholder="Search students in this batch by name...">
-                 <div id="studentSearchResults" class="list-group" style="display: none; width: 100%;"></div> {/* Ensure width is 100% of parent */}
+            <div class="col-md-6 offset-md-3 search-container">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="fas fa-search"></i></span>
+                    <input type="text" id="studentSearchInput" class="form-control" placeholder="Search by student name in this batch...">
+                </div>
+                <div id="studentSearchResults" class="list-group" style="display: none; width: 100%;"></div>
             </div>
         </div>
 
