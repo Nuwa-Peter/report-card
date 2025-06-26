@@ -189,6 +189,23 @@ try {
     $_SESSION['current_teacher_initials'] = $teacherInitialsFromForm; // Persist for report card generation
     $_SESSION['last_processed_batch_id'] = $reportBatchId; // For linking to view_processed_data
 
+    // Log successful import
+    require_once 'dal.php'; // Ensure DAL is available for logActivity
+    $logDescription = "Imported data for class " . htmlspecialchars($selectedClassValue) .
+                      ", term " . htmlspecialchars($termValue) .
+                      ", year " . htmlspecialchars($yearValue) .
+                      " (Batch ID: " . htmlspecialchars($reportBatchId) . ").";
+    logActivity(
+        $pdo,
+        $_SESSION['user_id'] ?? null, // user_id from session
+        $_SESSION['username'] ?? 'System', // username from session or 'System'
+        'BATCH_DATA_IMPORTED',
+        $logDescription,
+        'batch',
+        $reportBatchId,
+        null // No specific user to notify for this, it's a general log
+    );
+
 } catch (PDOException $e) {
     if ($pdo->inTransaction()) $pdo->rollBack();
     // For production, use session messages.

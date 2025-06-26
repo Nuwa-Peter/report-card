@@ -536,4 +536,52 @@ function searchStudentsByNameInBatch(PDO $pdo, string $searchTerm, int $batchId,
         return []; // Return empty array on error
     }
 }
+
+/**
+ * Logs an activity to the activity_log table.
+ *
+ * @param PDO $pdo The PDO database connection object.
+ * @param int|null $userId ID of the user performing the action. Can be null for system actions.
+ * @param string $username Username of the user performing the action.
+ * @param string $actionType A code representing the type of action (e.g., 'USER_LOGIN', 'MARKS_EDITED').
+ * @param string $description A human-readable description of the action.
+ * @param string|null $entityType Optional: Type of the entity related to the action (e.g., 'student', 'batch').
+ * @param int|null $entityId Optional: ID of the related entity.
+ * @param int|null $notifiedUserId Optional: ID of the user to be notified. If null, it's a general log entry.
+ *                                 is_read will remain 0 for this user until they view it.
+ * @return bool True on successful logging, false otherwise.
+ */
+function logActivity(
+    PDO $pdo,
+    ?int $userId,
+    string $username,
+    string $actionType,
+    string $description,
+    ?string $entityType = null,
+    ?int $entityId = null,
+    ?int $notifiedUserId = null
+): bool {
+    $sql = "INSERT INTO activity_log (user_id, username, action_type, description, entity_type, entity_id, notified_user_id, is_read)
+            VALUES (:user_id, :username, :action_type, :description, :entity_type, :entity_id, :notified_user_id, :is_read)";
+
+    try {
+        $stmt = $pdo->prepare($sql);
+        $stmt->bindValue(':user_id', $userId, $userId ? PDO::PARAM_INT : PDO::PARAM_NULL);
+        $stmt->bindValue(':username', $username, PDO::PARAM_STR);
+        $stmt->bindValue(':action_type', $actionType, PDO::PARAM_STR);
+        $stmt->bindValue(':description', $description, PDO::PARAM_STR);
+        $stmt->bindValue(':entity_type', $entityType, $entityType ? PDO::PARAM_STR : PDO::PARAM_NULL);
+        $stmt->bindValue(':entity_id', $entityId, $entityId ? PDO::PARAM_INT : PDO::PARAM_NULL);
+        $stmt->bindValue(':notified_user_id', $notifiedUserId, $notifiedUserId ? PDO::PARAM_INT : PDO::PARAM_NULL);
+        // is_read should be 0 (false) by default if it's a notification for someone.
+        // If notifiedUserId is NULL, it's a general log, is_read can be considered irrelevant or true (already "seen" by system).
+        // The table default is 0, so we can explicitly set it based on notifiedUserId.
+        $stmt->bindValue(':is_read', $notifiedUserId ? 0 : 1, PDO::PARAM_INT); // 0 for unread if it's a notification, 1 if general log
+
+        return $stmt->execute();
+    } catch (PDOException $e) {
+        error_log("DAL Error: logActivity failed. Action: $actionType, User: $username. Error: " . $e->getMessage());
+        return false;
+    }
+}
 ?>

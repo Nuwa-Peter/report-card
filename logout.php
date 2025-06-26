@@ -4,6 +4,19 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Log activity before destroying session data
+if (isset($_SESSION['user_id']) && isset($_SESSION['username'])) {
+    require_once 'db_connection.php'; // Provides $pdo - needed for logActivity
+    require_once 'dal.php';         // Provides logActivity
+    logActivity(
+        $pdo,
+        $_SESSION['user_id'],
+        $_SESSION['username'],
+        'USER_LOGOUT',
+        "User '" . $_SESSION['username'] . "' logged out."
+    );
+}
+
 // Unset all of the session variables
 $_SESSION = array();
 

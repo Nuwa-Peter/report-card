@@ -100,8 +100,38 @@ try {
 
                     // Here we'd compare with original scores to see if an update is needed.
                     // For simplicity, we'll just call upsertScore. upsertScore should ideally handle unchanged data efficiently.
+
+                    // Before calling upsertScore, get original scores to compare for logging
+                    // This is a simplified fetch; a more robust way would be to fetch all student scores once before the loop.
+                    $stmtOrigScore = $pdo->prepare("SELECT bot_score, mot_score, eot_score FROM scores WHERE report_batch_id = :rbid AND student_id = :sid AND subject_id = :subid");
+                    $stmtOrigScore->execute([':rbid' => $batch_id, ':sid' => $student_id, ':subid' => $subject_id]);
+                    $originalScores = $stmtOrigScore->fetch(PDO::FETCH_ASSOC);
+
                     if (upsertScore($pdo, $batch_id, $student_id, $subject_id, $bot_score, $mot_score, $eot_score)) {
                         $changesMade++;
+                        // Log if scores actually changed
+                        $changedFields = [];
+                        if ($originalScores === false || $originalScores['bot_score'] != $bot_score) $changedFields[] = "BOT";
+                        if ($originalScores === false || $originalScores['mot_score'] != $mot_score) $changedFields[] = "MOT";
+                        if ($originalScores === false || $originalScores['eot_score'] != $eot_score) $changedFields[] = "EOT";
+
+                        if (!empty($changedFields)) {
+                             // Need subject name for a better description
+                            $stmtSubjName = $pdo->prepare("SELECT subject_name_full FROM subjects WHERE id = :subid");
+                            $stmtSubjName->execute([':subid' => $subject_id]);
+                            $subjectName = $stmtSubjName->fetchColumn() ?: "Subject ID $subject_id";
+
+                            logActivity(
+                                $pdo,
+                                $_SESSION['user_id'],
+                                $_SESSION['username'],
+                                'MARKS_EDITED',
+                                "Edited " . implode(', ', $changedFields) . " for " . htmlspecialchars($subjectName) . " - student '" . htmlspecialchars($student_name) . "' (ID: $student_id) in batch ID $batch_id.",
+                                'student',
+                                $student_id,
+                                null // No specific user to notify for this action, it's a general log.
+                            );
+                        }
                     }
                 }
             }
@@ -121,21 +151,30 @@ try {
             }
 
             // 1. Add or find student
-            $new_student_id = upsertStudent($pdo, $student_name, $lin_no); // Assumes upsertStudent is ready
+            $new_student_id = upsertStudent($pdo, $student_name_new, $lin_no_new);
 
             if (!$new_student_id) {
-                // Failed to create or find student, log and skip
                 error_log("Failed to upsert new student: $student_name, LIN: $lin_no for batch $batch_id");
                 $hasErrors = true;
                 continue;
             }
-            $changesMade++; // Count student addition as a change
+            // Log student addition
+            logActivity(
+                $pdo,
+                $_SESSION['user_id'],
+                $_SESSION['username'],
+                'STUDENT_ADDED_TO_BATCH',
+                "Added new student '" . htmlspecialchars($student_name_new) . "' (ID: $new_student_id) to batch ID $batch_id.",
+                'student',
+                $new_student_id,
+                null
+            );
+            $changesMade++;
 
             // 2. Add their scores
             if (isset($newStudentData['scores']) && is_array($newStudentData['scores'])) {
                 foreach ($newStudentData['scores'] as $subject_code_key => $scoreData) {
                     $subject_id = filter_var($scoreData['subject_id'] ?? null, FILTER_VALIDATE_INT);
-                     // Fallback for subject_id using subject_code_fallback
                     if (!$subject_id && isset($scoreData['subject_code_fallback'])) {
                         $subject_code_from_fallback = trim(filter_var($scoreData['subject_code_fallback'], FILTER_SANITIZE_STRING));
                         if (!empty($subject_code_from_fallback)) {

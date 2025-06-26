@@ -34,6 +34,16 @@ try {
         $_SESSION['username'] = $user['username'];
         $_SESSION['role'] = $user['role']; // Store role if you have role-based access control
 
+        // Log activity
+        require_once 'dal.php'; // Ensure DAL is available
+        logActivity(
+            $pdo,
+            $user['id'],
+            $user['username'],
+            'USER_LOGIN',
+            "User '" . $user['username'] . "' logged in successfully."
+        );
+
         // Redirect to dashboard or intended page
         header('Location: index.php');
         exit;
