@@ -104,8 +104,11 @@ $pageUsername = $_SESSION['username'] ?? 'User'; // For navbar display
     </nav>
 
     <div class="container main-content">
-        <div class="text-center mb-4">
-            <h2>User Management</h2>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="mb-0">User Management</h2>
+            <a href="index.php" class="btn btn-outline-secondary btn-sm">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
         </div>
 
         <?php if (isset($_SESSION['error_message'])): ?>
