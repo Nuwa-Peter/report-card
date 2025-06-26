@@ -345,4 +345,162 @@ function getAllProcessedBatches(PDO $pdo): array {
     $stmt = $pdo->query($sql);
     return $stmt->fetchAll();
 }
+
+/**
+ * Finds a student by name and LIN, or creates a new student if not found.
+ * Student names are stored in UPPERCASE.
+ * @param PDO $pdo PDO database connection object.
+ * @param string $studentName The name of the student.
+ * @param string|null $linNo The LIN number of the student (optional).
+ * @return int|null The student's ID, or null on failure.
+ */
+function upsertStudent(PDO $pdo, string $studentName, ?string $linNo): ?int {
+    $studentNameUpper = strtoupper(trim($studentName));
+    $linNoClean = !empty($linNo) ? trim($linNo) : null;
+
+    // Try to find student by LIN first if provided, as it's more unique
+    if ($linNoClean) {
+        $sqlFind = "SELECT id FROM students WHERE lin_no = :lin_no";
+        $stmtFind = $pdo->prepare($sqlFind);
+        $stmtFind->execute([':lin_no' => $linNoClean]);
+        $studentId = $stmtFind->fetchColumn();
+        if ($studentId) {
+            // Optional: Update name if it differs, though be cautious
+            // $sqlUpdateName = "UPDATE students SET student_name = :student_name WHERE id = :id AND student_name != :student_name";
+            // $stmtUpdateName = $pdo->prepare($sqlUpdateName);
+            // $stmtUpdateName->execute([':student_name' => $studentNameUpper, ':id' => $studentId]);
+            return (int)$studentId;
+        }
+    }
+
+    // Try to find by name (especially if LIN was not provided or didn't match)
+    // This is a bit riskier for duplicates if names are common and LINs are not used consistently
+    $sqlFindByName = "SELECT id FROM students WHERE student_name = :student_name";
+    $paramsFindByName = [':student_name' => $studentNameUpper];
+    // If LIN was provided but didn't match, we might still want to check by name *without* LIN
+    // or by name *and* LIN is NULL, depending on desired strictness.
+    // For now, simple name check:
+    $stmtFindByName = $pdo->prepare($sqlFindByName);
+    $stmtFindByName->execute($paramsFindByName);
+    $studentId = $stmtFindByName->fetchColumn();
+
+    if ($studentId) {
+        // Found by name. If LIN was provided and is different, update it.
+        if ($linNoClean) {
+            $stmtUpdateLin = $pdo->prepare("UPDATE students SET lin_no = :lin_no WHERE id = :id AND (lin_no IS NULL OR lin_no != :lin_no)");
+            $stmtUpdateLin->execute([':lin_no' => $linNoClean, ':id' => $studentId]);
+        }
+        return (int)$studentId;
+    }
+
+    // Not found, so insert new student
+    try {
+        $sqlInsert = "INSERT INTO students (student_name, lin_no, created_at, updated_at) VALUES (:student_name, :lin_no, NOW(), NOW())";
+        $stmtInsert = $pdo->prepare($sqlInsert);
+        $stmtInsert->execute([
+            ':student_name' => $studentNameUpper,
+            ':lin_no' => $linNoClean
+        ]);
+        return (int)$pdo->lastInsertId();
+    } catch (PDOException $e) {
+        error_log("DAL Error: upsertStudent failed to insert. Name: $studentNameUpper, LIN: $linNoClean. Error: " . $e->getMessage());
+        return null;
+    }
+}
+
+/**
+ * Inserts or updates a score record for a student in a specific batch and subject.
+ * Assumes the `scores` table has a composite primary key or unique constraint on
+ * (report_batch_id, student_id, subject_id).
+ * @param PDO $pdo
+ * @param int $reportBatchId
+ * @param int $studentId
+ * @param int $subjectId
+ * @param float|null $botScore
+ * @param float|null $motScore
+ * @param float|null $eotScore
+ * @return bool True on success, false on failure.
+ */
+function upsertScore(PDO $pdo, int $reportBatchId, int $studentId, int $subjectId, ?float $botScore, ?float $motScore, ?float $eotScore): bool {
+    $sql = "INSERT INTO scores (report_batch_id, student_id, subject_id, bot_score, mot_score, eot_score, created_at, updated_at)
+            VALUES (:report_batch_id, :student_id, :subject_id, :bot_score, :mot_score, :eot_score, NOW(), NOW())
+            ON DUPLICATE KEY UPDATE
+                bot_score = VALUES(bot_score),
+                mot_score = VALUES(mot_score),
+                eot_score = VALUES(eot_score),
+                updated_at = NOW()";
+    try {
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([
+            ':report_batch_id' => $reportBatchId,
+            ':student_id' => $studentId,
+            ':subject_id' => $subjectId,
+            ':bot_score' => $botScore,
+            ':mot_score' => $motScore,
+            ':eot_score' => $eotScore
+        ]);
+        return $stmt->rowCount() > 0; // Returns true if a row was inserted or updated
+    } catch (PDOException $e) {
+        error_log("DAL Error: upsertScore failed. Batch: $reportBatchId, Student: $studentId, Subject: $subjectId. Error: " . $e->getMessage());
+        // You might want to check $e->errorInfo[1] for specific error codes like 1062 for duplicate if not using ON DUPLICATE KEY
+        return false;
+    }
+}
+
+/**
+ * Fetches the ID of a subject by its subject code.
+ * @param PDO $pdo
+ * @param string $subjectCode
+ * @return int|null Subject ID or null if not found.
+ */
+function getSubjectIdByCode(PDO $pdo, string $subjectCode): ?int {
+    $sql = "SELECT id FROM subjects WHERE subject_code = :subject_code LIMIT 1";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([':subject_code' => trim($subjectCode)]);
+    $result = $stmt->fetchColumn();
+    return $result ? (int)$result : null;
+}
+
+/**
+ * Updates basic details of an existing student.
+ * @param PDO $pdo
+ * @param int $studentId
+ * @param string $studentName
+ * @param string|null $linNo
+ * @return bool True on success, false on failure or if no changes were made.
+ */
+function updateStudentDetails(PDO $pdo, int $studentId, string $studentName, ?string $linNo): bool {
+    $studentNameUpper = strtoupper(trim($studentName));
+    $linNoClean = !empty($linNo) ? trim($linNo) : null;
+
+    // Check if student exists
+    $stmtCheck = $pdo->prepare("SELECT student_name, lin_no FROM students WHERE id = :id");
+    $stmtCheck->execute([':id' => $studentId]);
+    $currentDetails = $stmtCheck->fetch(PDO::FETCH_ASSOC);
+
+    if (!$currentDetails) {
+        error_log("DAL Error: updateStudentDetails failed. Student ID $studentId not found.");
+        return false; // Student not found
+    }
+
+    // Only update if details have changed
+    if ($currentDetails['student_name'] === $studentNameUpper && $currentDetails['lin_no'] === $linNoClean) {
+        return true; // No changes needed, considered success
+    }
+
+    try {
+        $sql = "UPDATE students SET student_name = :student_name, lin_no = :lin_no, updated_at = NOW() WHERE id = :id";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([
+            ':student_name' => $studentNameUpper,
+            ':lin_no' => $linNoClean,
+            ':id' => $studentId
+        ]);
+        return $stmt->rowCount() > 0;
+    } catch (PDOException $e) {
+        error_log("DAL Error: updateStudentDetails failed for Student ID $studentId. Error: " . $e->getMessage());
+        return false;
+    }
+}
+
 ?>

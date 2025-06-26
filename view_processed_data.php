@@ -136,6 +136,7 @@ $subjectDisplayNames = [
                 </div>
             </div>
             <div class="card-footer text-center">
+                <button type="button" id="enableEditingBtn" class="btn btn-info me-2"><i class="fas fa-edit"></i> Enable Editing / Add Student</button>
                 <a href="run_calculations.php?batch_id=<?php echo $batch_id; ?>" class="btn btn-warning me-2"><i class="fas fa-calculator"></i> Calculate Summaries & Auto-Remarks</a>
                 <a href="generate_pdf.php?batch_id=<?php echo $batch_id; ?>" class="btn btn-danger me-2" target="_blank"><i class="fas fa-file-pdf"></i> Generate Full Class PDF Report</a>
                 <a href="summary_sheet.php?batch_id=<?php echo $batch_id; ?>" class="btn btn-success me-2" target="_blank"><i class="fas fa-chart-bar"></i> View Class Summary Sheet</a>
@@ -143,15 +144,128 @@ $subjectDisplayNames = [
         </div>
 
         <h3 class="mt-4 mb-3">Student Raw Scores</h3>
-        <?php if (!empty($studentsWithScores)): ?>
-            <div class="table-responsive">
-                <table class="table table-bordered table-striped table-hover">
-                    <thead class="table-light">
+        <form id="editMarksForm" action="handle_edit_marks.php" method="post">
+            <input type="hidden" name="batch_id" value="<?php echo $batch_id; ?>">
+            <div class="mb-3 text-center" id="editModeButtons" style="display: none;">
+                <button type="submit" class="btn btn-primary me-2"><i class="fas fa-save"></i> Save Changes</button>
+                <button type="button" id="cancelEditingBtn" class="btn btn-secondary"><i class="fas fa-times"></i> Cancel Edits</button>
+            </div>
+
+            <?php if (!empty($studentsWithScores)): ?>
+                <div class="table-responsive">
+                    <table id="scoresTable" class="table table-bordered table-striped table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th rowspan="2" style="vertical-align:middle;">#</th>
+                                <th rowspan="2" style="vertical-align:middle;" class="student-name-col">Student Name</th>
+                                <th rowspan="2" style="vertical-align:middle;">LIN NO.</th>
+                                <?php foreach ($uniqueSubjectCodesInBatch as $subjectCode => $subjectFullName): ?>
+                                    <th colspan="3" class="text-center"><?php echo htmlspecialchars($subjectFullName); ?></th>
+                                <?php endforeach; ?>
+                            </tr>
+                            <tr>
+                                <?php foreach ($uniqueSubjectCodesInBatch as $subjectCode => $subjectFullName): ?>
+                                    <th>BOT</th>
+                                    <th>MOT</th>
+                                    <th>EOT</th>
+                                <?php endforeach; ?>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php $count = 0; foreach ($studentsWithScores as $studentId => $studentData): $count++; ?>
+                                <tr data-student-id="<?php echo $studentId; ?>">
+                                    <td><?php echo $count; ?>
+                                        <input type="hidden" name="students[<?php echo $studentId; ?>][id]" value="<?php echo $studentId; ?>">
+                                    </td>
+                                    <td class="student-name-col">
+                                        <span class="score-display"><?php echo htmlspecialchars($studentData['student_name']); ?></span>
+                                        <input type="text" name="students[<?php echo $studentId; ?>][name]" class="form-control score-input" value="<?php echo htmlspecialchars($studentData['student_name']); ?>" style="display: none;">
+                                    </td>
+                                    <td>
+                                        <span class="score-display"><?php echo htmlspecialchars($studentData['lin_no'] ?? 'N/A'); ?></span>
+                                        <input type="text" name="students[<?php echo $studentId; ?>][lin_no]" class="form-control score-input" value="<?php echo htmlspecialchars($studentData['lin_no'] ?? ''); ?>" style="display: none;">
+                                    </td>
+                                    <?php foreach ($uniqueSubjectCodesInBatch as $subjectCode => $subjectFullName): ?>
+                                        <?php
+                                            $scores = $studentData['subjects'][$subjectCode] ?? null;
+                                            $subject_id = $scores['subject_id'] ?? null; // Assuming subject_id is available
+                                        ?>
+                                        <td>
+                                            <span class="score-display"><?php echo htmlspecialchars($scores['bot_score'] ?? '-'); ?></span>
+                                            <input type="text" name="students[<?php echo $studentId; ?>][scores][<?php echo $subjectCode; ?>][bot]" class="form-control score-input" value="<?php echo htmlspecialchars($scores['bot_score'] ?? ''); ?>" style="display: none;" size="3">
+                                        </td>
+                                        <td>
+                                            <span class="score-display"><?php echo htmlspecialchars($scores['mot_score'] ?? '-'); ?></span>
+                                            <input type="text" name="students[<?php echo $studentId; ?>][scores][<?php echo $subjectCode; ?>][mot]" class="form-control score-input" value="<?php echo htmlspecialchars($scores['mot_score'] ?? ''); ?>" style="display: none;" size="3">
+                                        </td>
+                                        <td>
+                                            <span class="score-display"><?php echo htmlspecialchars($scores['eot_score'] ?? '-'); ?></span>
+                                            <input type="text" name="students[<?php echo $studentId; ?>][scores][<?php echo $subjectCode; ?>][eot]" class="form-control score-input" value="<?php echo htmlspecialchars($scores['eot_score'] ?? ''); ?>" style="display: none;" size="3">
+                                            <?php if ($subject_id): ?>
+                                                <input type="hidden" name="students[<?php echo $studentId; ?>][scores][<?php echo $subjectCode; ?>][subject_id]" value="<?php echo $subject_id; ?>">
+                                            <?php endif; ?>
+                                        </td>
+                                    <?php endforeach; ?>
+                                </tr>
+                            <?php endforeach; ?>
+                            <!-- Template row for new student -->
+                            <tr id="newStudentTemplateRow" style="display: none;">
+                                <td>New</td>
+                                <td class="student-name-col">
+                                    <input type="text" name="new_student[0][name]" class="form-control" placeholder="Student Name">
+                                </td>
+                                <td>
+                                    <input type="text" name="new_student[0][lin_no]" class="form-control" placeholder="LIN No.">
+                                </td>
+                                <?php foreach ($uniqueSubjectCodesInBatch as $subjectCode => $subjectFullName): ?>
+                                    <?php
+                                        // Attempt to get a subject_id for the new student row.
+                                        // This assumes all existing students might have this subject,
+                                        // and we can pick one subject_id. This might need refinement
+                                        // if subject_id isn't consistently available or if it's better to look up by code.
+                                        $any_subject_id_for_code = null;
+                                        if (!empty($studentsWithScores)) {
+                                            $firstStudent = reset($studentsWithScores);
+                                            if (isset($firstStudent['subjects'][$subjectCode]['subject_id'])) {
+                                                $any_subject_id_for_code = $firstStudent['subjects'][$subjectCode]['subject_id'];
+                                            }
+                                        }
+                                    ?>
+                                    <td><input type="text" name="new_student[0][scores][<?php echo $subjectCode; ?>][bot]" class="form-control" placeholder="BOT" size="3"></td>
+                                    <td><input type="text" name="new_student[0][scores][<?php echo $subjectCode; ?>][mot]" class="form-control" placeholder="MOT" size="3"></td>
+                                    <td>
+                                        <input type="text" name="new_student[0][scores][<?php echo $subjectCode; ?>][eot]" class="form-control" placeholder="EOT" size="3">
+                                        <?php if ($any_subject_id_for_code): // Use subject_id if available for consistency ?>
+                                            <input type="hidden" name="new_student[0][scores][<?php echo $subjectCode; ?>][subject_id]" value="<?php echo $any_subject_id_for_code; ?>">
+                                        <?php else: // Fallback to sending subject_code if ID is not found (handle in backend) ?>
+                                            <input type="hidden" name="new_student[0][scores][<?php echo $subjectCode; ?>][subject_code_fallback]" value="<?php echo $subjectCode; ?>">
+                                        <?php endif; ?>
+                                    </td>
+                                <?php endforeach; ?>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="text-center mt-2 mb-3" id="addStudentBtnContainer" style="display: none;">
+                    <button type="button" id="addAnotherStudentBtn" class="btn btn-success"><i class="fas fa-plus"></i> Add Another Student</button>
+                </div>
+            <?php else: ?>
+                <div class="alert alert-info">No student scores found for this batch. The import might have been empty or encountered issues with specific files. Please verify the uploaded files for this batch. You can add students once editing is enabled if this batch is meant to be populated manually.</div>
+                <!-- Minimal new student row for initially empty batch -->
+                 <table id="scoresTable" class="table table-bordered table-striped table-hover" style="display:none;"> <!-- Hidden initially if no students -->
+                     <thead class="table-light">
                         <tr>
                             <th rowspan="2" style="vertical-align:middle;">#</th>
                             <th rowspan="2" style="vertical-align:middle;" class="student-name-col">Student Name</th>
                             <th rowspan="2" style="vertical-align:middle;">LIN NO.</th>
-                            <?php foreach ($uniqueSubjectCodesInBatch as $subjectCode => $subjectFullName): ?>
+                            <?php
+                            // If $uniqueSubjectCodesInBatch is empty (e.g. new batch from scratch),
+                            // we might need a default set of subjects or a way to define them.
+                            // For now, this will render no subject columns if the batch had no prior data.
+                            // This scenario (editing a completely empty batch) needs more thought for subject selection.
+                            // A possible solution: if empty, load all subjects for the class level from `subjects` table.
+                            // For now, assuming $uniqueSubjectCodesInBatch is populated if any editing is meaningful.
+                            foreach ($uniqueSubjectCodesInBatch as $subjectCode => $subjectFullName): ?>
                                 <th colspan="3" class="text-center"><?php echo htmlspecialchars($subjectFullName); ?></th>
                             <?php endforeach; ?>
                         </tr>
@@ -164,27 +278,30 @@ $subjectDisplayNames = [
                         </tr>
                     </thead>
                     <tbody>
-                        <?php $count = 0; foreach ($studentsWithScores as $studentId => $studentData): $count++; ?>
-                            <tr>
-                                <td><?php echo $count; ?></td>
-                                <td class="student-name-col"><?php echo htmlspecialchars($studentData['student_name']); ?></td>
-                                <td><?php echo htmlspecialchars($studentData['lin_no'] ?? 'N/A'); ?></td>
+                        <tr id="newStudentTemplateRow" style="display: none;">
+                                <td>New</td>
+                                <td class="student-name-col">
+                                    <input type="text" name="new_student[0][name]" class="form-control" placeholder="Student Name">
+                                </td>
+                                <td>
+                                    <input type="text" name="new_student[0][lin_no]" class="form-control" placeholder="LIN No.">
+                                </td>
                                 <?php foreach ($uniqueSubjectCodesInBatch as $subjectCode => $subjectFullName): ?>
-                                    <?php
-                                        $scores = $studentData['subjects'][$subjectCode] ?? null;
-                                    ?>
-                                    <td><?php echo htmlspecialchars($scores['bot_score'] ?? '-'); ?></td>
-                                    <td><?php echo htmlspecialchars($scores['mot_score'] ?? '-'); ?></td>
-                                    <td><?php echo htmlspecialchars($scores['eot_score'] ?? '-'); ?></td>
+                                    <td><input type="text" name="new_student[0][scores][<?php echo $subjectCode; ?>][bot]" class="form-control" placeholder="BOT" size="3"></td>
+                                    <td><input type="text" name="new_student[0][scores][<?php echo $subjectCode; ?>][mot]" class="form-control" placeholder="MOT" size="3"></td>
+                                    <td>
+                                        <input type="text" name="new_student[0][scores][<?php echo $subjectCode; ?>][eot]" class="form-control" placeholder="EOT" size="3">
+                                        <input type="hidden" name="new_student[0][scores][<?php echo $subjectCode; ?>][subject_code_fallback]" value="<?php echo $subjectCode; ?>">
+                                    </td>
                                 <?php endforeach; ?>
                             </tr>
-                        <?php endforeach; ?>
                     </tbody>
                 </table>
-            </div>
-        <?php else: ?>
-            <div class="alert alert-info">No student scores found for this batch. The import might have been empty or encountered issues with specific files. Please verify the uploaded files for this batch.</div>
-        <?php endif; ?>
+                 <div class="text-center mt-2 mb-3" id="addStudentBtnContainer" style="display: none;">
+                    <button type="button" id="addAnotherStudentBtn" class="btn btn-success"><i class="fas fa-plus"></i> Add Another Student</button>
+                </div>
+            <?php endif; ?>
+        </form>
     </div>
 
     <footer class="text-center mt-4 mb-3 p-3 bg-light">
@@ -192,5 +309,132 @@ $subjectDisplayNames = [
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const enableEditingBtn = document.getElementById('enableEditingBtn');
+            const cancelEditingBtn = document.getElementById('cancelEditingBtn');
+            const editModeButtons = document.getElementById('editModeButtons');
+            const scoresTable = document.getElementById('scoresTable');
+            const newStudentTemplateRow = document.getElementById('newStudentTemplateRow');
+            const addAnotherStudentBtn = document.getElementById('addAnotherStudentBtn');
+            const addStudentBtnContainer = document.getElementById('addStudentBtnContainer');
+            let newStudentIndex = 0;
+
+            if (!scoresTable && !enableEditingBtn) { // If table doesn't exist, editing makes no sense
+                if(enableEditingBtn) enableEditingBtn.style.display = 'none';
+                return;
+            }
+             if (!scoresTable && enableEditingBtn) { // Table might be missing if no students
+                // Allow enabling editing to add first student
+                 enableEditingBtn.addEventListener('click', function() {
+                    // This case is tricky if $uniqueSubjectCodesInBatch is empty.
+                    // The current PHP doesn't render subject columns if $uniqueSubjectCodesInBatch is empty.
+                    // For a truly empty batch, we'd need to define subjects.
+                    // This JS assumes subject columns ARE rendered or will be.
+                    // For now, if table is missing, we can't do much.
+                    // The PHP was modified to render the table even if no students, but hidden.
+                    // So, this block might not be hit if that works.
+                    alert("Cannot enable editing: student table not found. This might be an empty batch with no subjects defined yet.");
+                });
+                return;
+            }
+
+
+            function toggleEditMode(isEditing) {
+                const displayElements = scoresTable.querySelectorAll('.score-display');
+                const inputElements = scoresTable.querySelectorAll('.score-input');
+
+                displayElements.forEach(el => el.style.display = isEditing ? 'none' : '');
+                inputElements.forEach(el => el.style.display = isEditing ? '' : 'none');
+
+                if (editModeButtons) editModeButtons.style.display = isEditing ? 'flex' : 'none';
+                if (enableEditingBtn) enableEditingBtn.style.display = isEditing ? 'none' : '';
+                if (newStudentTemplateRow) newStudentTemplateRow.style.display = isEditing ? '' : 'none';
+                if (addStudentBtnContainer) addStudentBtnContainer.style.display = isEditing ? 'flex': 'none';
+
+                 // If enabling editing and no students exist, make the table visible
+                if (isEditing && scoresTable.style.display === 'none' && <?php echo empty($studentsWithScores) ? 'true' : 'false'; ?>) {
+                    scoresTable.style.display = ''; // Show table
+                    if (newStudentTemplateRow) newStudentTemplateRow.style.display = ''; // Ensure first new student row is visible
+                }
+
+
+                // Reset new student index when exiting edit mode
+                if (!isEditing) {
+                    newStudentIndex = 0;
+                    // Remove dynamically added new student rows beyond the template
+                    const dynamicNewRows = scoresTable.querySelectorAll('tr[id^="newStudentRow_"]');
+                    dynamicNewRows.forEach(row => row.remove());
+                    // Clear template row inputs
+                    if (newStudentTemplateRow) {
+                         newStudentTemplateRow.querySelectorAll('input[type="text"]').forEach(input => input.value = '');
+                    }
+                } else {
+                    // If entering edit mode and the template row is the only one for new students, ensure its index is 0.
+                    if (newStudentTemplateRow && newStudentTemplateRow.querySelectorAll('input[name^="new_student[0]"]').length > 0) {
+                         newStudentIndex = 0; // Will be incremented to 1 by add new student function if button is clicked
+                    }
+                }
+            }
+
+            if(enableEditingBtn) {
+                enableEditingBtn.addEventListener('click', function() {
+                    toggleEditMode(true);
+                    // If template is visible and it's for index 0, prime newStudentIndex for the *next* one
+                    if (newStudentTemplateRow && newStudentTemplateRow.style.display !== 'none') {
+                        const firstInputName = newStudentTemplateRow.querySelector('input[type="text"]')?.name;
+                        if (firstInputName && firstInputName.startsWith('new_student[0]')) {
+                            newStudentIndex = 0; // Ready for the first "add another" to be 1
+                        }
+                    }
+                });
+            }
+
+            if(cancelEditingBtn) {
+                cancelEditingBtn.addEventListener('click', function() {
+                    // Potentially reset form fields to original values if changes were made
+                    // For simplicity now, just toggle back. A full reset would require storing original values.
+                    document.getElementById('editMarksForm').reset(); // Resets to initial HTML values
+                    toggleEditMode(false);
+                });
+            }
+
+            if(addAnotherStudentBtn && newStudentTemplateRow) {
+                addAnotherStudentBtn.addEventListener('click', function() {
+                    newStudentIndex++;
+                    const newRow = newStudentTemplateRow.cloneNode(true);
+                    newRow.id = `newStudentRow_${newStudentIndex}`;
+                    newRow.style.display = ''; // Make it visible
+
+                    newRow.querySelectorAll('input').forEach(input => {
+                        input.name = input.name.replace(/new_student\[0\]/g, `new_student[${newStudentIndex}]`);
+                        if (input.type === 'text') input.value = ''; // Clear cloned values
+                    });
+                    // Add a remove button to the new row
+                    const removeBtnCell = document.createElement('td');
+                    const removeBtn = document.createElement('button');
+                    removeBtn.type = 'button';
+                    removeBtn.className = 'btn btn-danger btn-sm';
+                    removeBtn.innerHTML = '<i class="fas fa-trash"></i>';
+                    removeBtn.onclick = function() { newRow.remove(); /* Consider re-indexing or managing gaps if needed */ };
+                    // Add remove button to the first cell (where '#' or 'New' is)
+                    // Check if first cell exists
+                    if(newRow.cells.length > 0) {
+                        // If we want to replace "New" with the button or add it next to it.
+                        // For simplicity, let's append it to the first cell's content.
+                        // Or create a new cell specifically for actions.
+                        // Let's add it to the first cell for now, replacing its content.
+                        newRow.cells[0].innerHTML = ''; // Clear "New"
+                        newRow.cells[0].appendChild(removeBtn);
+                    }
+
+
+                    // scoresTable.querySelector('tbody').appendChild(newRow); // Appends to end
+                    // Insert before the template row if template is always last (it should be with current HTML)
+                    scoresTable.querySelector('tbody').insertBefore(newRow, newStudentTemplateRow);
+                });
+            }
+        });
+    </script>
 </body>
 </html>
