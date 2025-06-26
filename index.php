@@ -209,6 +209,23 @@ try {
              #sidebarCollapse span { display: block; } /* Always show toggler */
         }
 
+        /* Activity Feed Dropdown Item Text Styling */
+        #adminActivityDropdownBody .dropdown-item-text {
+            white-space: normal; /* Allow text to wrap */
+            word-wrap: break-word; /* Break long words */
+            line-height: 1.3; /* Adjust line height for readability */
+            padding-top: 0.25rem;
+            padding-bottom: 0.25rem;
+        }
+        #adminActivityDropdownBody .dropdown-item-text strong {
+            color: #0056b3; /* Theme color for username */
+        }
+         #adminActivityDropdownBody .dropdown-item-text .text-muted[title] { /* Hint that description is truncated */
+            text-decoration: underline dotted;
+            text-decoration-color: #6c757d; /* Bootstrap's text-muted color */
+            text-decoration-thickness: 1px;
+        }
+
     </style>
 </head>
 <body>
@@ -267,6 +284,25 @@ try {
 
                 <!-- Right aligned navbar items -->
                 <div class="ms-auto d-flex align-items-center">
+                    <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'superadmin'): ?>
+                        <!-- Superadmin Activity Feed Bell -->
+                        <div class="nav-item dropdown me-2"> {/* Using div instead of li for direct flex alignment */}
+                            <a class="nav-link" href="#" id="adminActivityBellLink" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Recent Activity">
+                                <i class="fas fa-bell text-secondary"></i>
+                                <span id="adminActivityBadge" class="badge rounded-pill bg-danger ms-1" style="display:none; font-size: 0.6em; vertical-align: top; margin-left: -2px;"></span>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end shadow border-0" aria-labelledby="adminActivityBellLink" id="adminActivityDropdown" style="width: 380px; max-height: 450px; overflow-y: auto;">
+                                <li><h6 class="dropdown-header bg-light py-2">Recent System Activity</h6></li>
+                                <li><div id="adminActivityDropdownBody" class="p-2">
+                                    {/* Activity items will be injected here by JS */}
+                                    <p class="text-center text-muted my-3">Loading activities...</p>
+                                </div></li>
+                                <li><hr class="dropdown-divider my-0"></li>
+                                <li><a class="dropdown-item text-center py-2 small" href="view_activity_log.php">View All Logs</a></li>
+                            </ul>
+                        </div>
+                    <?php endif; ?>
+
                     <?php if (isset($_SESSION['username'])): ?>
                         <div class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle text-dark" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -383,6 +419,92 @@ try {
                 sidebarCollapse.addEventListener('click', function () {
                     sidebar.classList.toggle('active');
                     content.classList.toggle('active');
+                });
+            }
+
+            // Superadmin Activity Feed
+            const adminActivityBellLink = document.getElementById('adminActivityBellLink');
+            const adminActivityDropdownBody = document.getElementById('adminActivityDropdownBody');
+            const adminActivityBadge = document.getElementById('adminActivityBadge');
+
+            function formatRelativeTime(timestamp) {
+                const now = new Date();
+                const past = new Date(timestamp.replace(' ', 'T') + 'Z'); // Assume UTC, ensure ISO format for parsing
+                const diffInSeconds = Math.floor((now - past) / 1000);
+
+                if (diffInSeconds < 60) return `${diffInSeconds}s ago`;
+                const diffInMinutes = Math.floor(diffInSeconds / 60);
+                if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+                const diffInHours = Math.floor(diffInMinutes / 60);
+                if (diffInHours < 24) return `${diffInHours}h ago`;
+                const diffInDays = Math.floor(diffInHours / 24);
+                if (diffInDays < 7) return `${diffInDays}d ago`;
+
+                return past.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }); // Example: 12 Jan
+            }
+
+            function fetchAdminActivityFeed() {
+                if (!adminActivityDropdownBody) return; // Only run if the element exists (i.e., user is superadmin)
+
+                fetch('api_admin_activity.php?limit=10')
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(activities => {
+                        adminActivityDropdownBody.innerHTML = ''; // Clear previous items or "Loading..."
+                        if (activities.length > 0) {
+                            activities.forEach(activity => {
+                                const itemDiv = document.createElement('div');
+                                itemDiv.classList.add('dropdown-item-text', 'small', 'border-bottom', 'pb-1', 'mb-1');
+
+                                let actionTypeFormatted = activity.action_type.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
+                                let descriptionSnippet = activity.description.length > 70 ? activity.description.substring(0, 67) + '...' : activity.description;
+
+                                itemDiv.innerHTML = `
+                                    <strong>${activity.username}</strong>: ${actionTypeFormatted}<br>
+                                    <span class="text-muted" title="${activity.description}">${descriptionSnippet}</span><br>
+                                    <small class="text-muted fst-italic">${formatRelativeTime(activity.timestamp)}</small>
+                                `;
+                                adminActivityDropdownBody.appendChild(itemDiv);
+                            });
+
+                            // Simple badge logic: show a count of new items (up to a limit, e.g., 9+)
+                            // For a true "unread" count, the API and DB would need more logic (e.g., last_viewed_timestamp by admin)
+                            // For now, just show the number of fetched items, or "N+"
+                            let badgeCount = activities.length;
+                            if (adminActivityBadge) {
+                                adminActivityBadge.textContent = badgeCount > 9 ? '9+' : badgeCount.toString();
+                                adminActivityBadge.style.display = 'inline-block';
+                            }
+
+                        } else {
+                            adminActivityDropdownBody.innerHTML = '<p class="text-center text-muted my-3">No recent activity.</p>';
+                            if (adminActivityBadge) {
+                                adminActivityBadge.style.display = 'none';
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching admin activity feed:', error);
+                        adminActivityDropdownBody.innerHTML = '<p class="text-center text-danger my-3">Could not load activity.</p>';
+                        if (adminActivityBadge) {
+                             adminActivityBadge.style.display = 'none';
+                        }
+                    });
+            }
+
+            if (adminActivityBellLink) { // Check if user is superadmin (bell link exists)
+                fetchAdminActivityFeed(); // Initial fetch
+
+                // Optional: Refresh when bell is clicked (Bootstrap 5 dropdown events)
+                var activityDropdown = new bootstrap.Dropdown(adminActivityBellLink); // Ensure this is correct for your Bootstrap version
+                adminActivityBellLink.addEventListener('show.bs.dropdown', function () {
+                    // Potentially clear badge here or refresh content
+                    fetchAdminActivityFeed();
+                    // If badge was a true "unread" count, this is where you'd clear it or mark items as read via API
                 });
             }
         });
