@@ -86,6 +86,50 @@ $subjectDisplayNames = [
         .table th, .table td { vertical-align: middle; text-align:center;}
         .table .student-name-col { text-align:left; }
         .sticky-top { top:0; z-index: 1020;} /* Ensure navbar is on top */
+
+        /* Compact table styles from previous step - ensure they are present */
+        .table-compact th,
+        .table-compact td {
+            padding: 0.4rem;
+            font-size: 0.875rem;
+        }
+        .table-compact .form-control.score-input,
+        .table-compact .form-control {
+            font-size: 0.875rem;
+            padding: 0.25rem 0.5rem;
+            height: auto;
+        }
+        .table-compact input[type="text"][size="3"] {
+            width: 4em;
+        }
+
+        /* Live Search Results */
+        #studentSearchResults {
+            position: absolute; /* Positioned relative to its offset parent or containing block */
+            background-color: white;
+            border: 1px solid #ccc;
+            border-top: none;
+            z-index: 1050; /* Ensure it's above other elements, like table headers */
+            width: 100%; /* Make it full width of its container */
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        #studentSearchResults .list-group-item {
+            cursor: pointer;
+            padding: 0.5rem 0.75rem; /* Adjust padding for items */
+            font-size: 0.875rem; /* Match compact style */
+        }
+        #studentSearchResults .list-group-item:hover {
+            background-color: #f0f0f0;
+        }
+        .highlight-row td { /* Apply to TD for full row highlight */
+            background-color: #fff3cd !important; /* Light yellow highlight */
+            transition: background-color 0.3s ease-in-out;
+        }
+        /* Container for search to manage positioning of results */
+        .search-container {
+            position: relative; /* For absolute positioning of results */
+        }
     </style>
 </head>
 <body>
@@ -136,10 +180,21 @@ $subjectDisplayNames = [
                 </div>
             </div>
             <div class="card-footer text-center">
-                <button type="button" id="enableEditingBtn" class="btn btn-info me-2"><i class="fas fa-edit"></i> Enable Editing / Add Student</button>
-                <a href="run_calculations.php?batch_id=<?php echo $batch_id; ?>" class="btn btn-warning me-2"><i class="fas fa-calculator"></i> Calculate Summaries & Auto-Remarks</a>
-                <a href="generate_pdf.php?batch_id=<?php echo $batch_id; ?>" class="btn btn-danger me-2" target="_blank"><i class="fas fa-file-pdf"></i> Generate Full Class PDF Report</a>
-                <a href="summary_sheet.php?batch_id=<?php echo $batch_id; ?>" class="btn btn-success me-2" target="_blank"><i class="fas fa-chart-bar"></i> View Class Summary Sheet</a>
+                <button type="button" id="enableEditingBtn" class="btn btn-info btn-sm me-2"><i class="fas fa-edit"></i> Enable Editing / Add Student</button>
+                <a href="run_calculations.php?batch_id=<?php echo $batch_id; ?>" class="btn btn-warning btn-sm me-2"><i class="fas fa-calculator"></i> Calculate Summaries & Auto-Remarks</a>
+                <a href="generate_pdf.php?batch_id=<?php echo $batch_id; ?>" class="btn btn-danger btn-sm me-2"><i class="fas fa-file-pdf"></i> Generate Full Class PDF Report</a>
+                <a href="summary_sheet.php?batch_id=<?php echo $batch_id; ?>" class="btn btn-success btn-sm me-2"><i class="fas fa-chart-bar"></i> View Class Summary Sheet</a>
+            </div>
+        </div>
+
+        <div class="alert alert-info mt-3" role="alert">
+           <i class="fas fa-info-circle"></i> <strong>Important:</strong> After editing marks or adding students, always re-run <strong>'Calculate Summaries & Auto-Remarks'</strong> to ensure reports and summaries are accurate.
+        </div>
+
+        <div class="row mt-3 mb-2">
+            <div class="col-md-6 offset-md-3 search-container"> {/* Added search-container for positioning context */}
+                 <input type="text" id="studentSearchInput" class="form-control form-control-sm" placeholder="Search students in this batch by name...">
+                 <div id="studentSearchResults" class="list-group" style="display: none; width: 100%;"></div> {/* Ensure width is 100% of parent */}
             </div>
         </div>
 
@@ -147,13 +202,13 @@ $subjectDisplayNames = [
         <form id="editMarksForm" action="handle_edit_marks.php" method="post">
             <input type="hidden" name="batch_id" value="<?php echo $batch_id; ?>">
             <div class="mb-3 text-center" id="editModeButtons" style="display: none;">
-                <button type="submit" class="btn btn-primary me-2"><i class="fas fa-save"></i> Save Changes</button>
-                <button type="button" id="cancelEditingBtn" class="btn btn-secondary"><i class="fas fa-times"></i> Cancel Edits</button>
+                <button type="submit" class="btn btn-primary btn-sm me-2"><i class="fas fa-save"></i> Save Changes</button>
+                <button type="button" id="cancelEditingBtn" class="btn btn-secondary btn-sm"><i class="fas fa-times"></i> Cancel Edits</button>
             </div>
 
             <?php if (!empty($studentsWithScores)): ?>
                 <div class="table-responsive">
-                    <table id="scoresTable" class="table table-bordered table-striped table-hover">
+                    <table id="scoresTable" class="table table-bordered table-striped table-hover table-compact">
                         <thead class="table-light">
                             <tr>
                                 <th rowspan="2" style="vertical-align:middle;">#</th>
@@ -179,11 +234,11 @@ $subjectDisplayNames = [
                                     </td>
                                     <td class="student-name-col">
                                         <span class="score-display"><?php echo htmlspecialchars($studentData['student_name']); ?></span>
-                                        <input type="text" name="students[<?php echo $studentId; ?>][name]" class="form-control score-input" value="<?php echo htmlspecialchars($studentData['student_name']); ?>" style="display: none;">
+                                        <input type="text" name="students[<?php echo $studentId; ?>][name]" class="form-control form-control-sm score-input" value="<?php echo htmlspecialchars($studentData['student_name']); ?>" style="display: none;">
                                     </td>
                                     <td>
                                         <span class="score-display"><?php echo htmlspecialchars($studentData['lin_no'] ?? 'N/A'); ?></span>
-                                        <input type="text" name="students[<?php echo $studentId; ?>][lin_no]" class="form-control score-input" value="<?php echo htmlspecialchars($studentData['lin_no'] ?? ''); ?>" style="display: none;">
+                                        <input type="text" name="students[<?php echo $studentId; ?>][lin_no]" class="form-control form-control-sm score-input" value="<?php echo htmlspecialchars($studentData['lin_no'] ?? ''); ?>" style="display: none;">
                                     </td>
                                     <?php foreach ($uniqueSubjectCodesInBatch as $subjectCode => $subjectFullName): ?>
                                         <?php
@@ -192,15 +247,15 @@ $subjectDisplayNames = [
                                         ?>
                                         <td>
                                             <span class="score-display"><?php echo htmlspecialchars($scores['bot_score'] ?? '-'); ?></span>
-                                            <input type="text" name="students[<?php echo $studentId; ?>][scores][<?php echo $subjectCode; ?>][bot]" class="form-control score-input" value="<?php echo htmlspecialchars($scores['bot_score'] ?? ''); ?>" style="display: none;" size="3">
+                                            <input type="text" name="students[<?php echo $studentId; ?>][scores][<?php echo $subjectCode; ?>][bot]" class="form-control form-control-sm score-input" value="<?php echo htmlspecialchars($scores['bot_score'] ?? ''); ?>" style="display: none;" size="3">
                                         </td>
                                         <td>
                                             <span class="score-display"><?php echo htmlspecialchars($scores['mot_score'] ?? '-'); ?></span>
-                                            <input type="text" name="students[<?php echo $studentId; ?>][scores][<?php echo $subjectCode; ?>][mot]" class="form-control score-input" value="<?php echo htmlspecialchars($scores['mot_score'] ?? ''); ?>" style="display: none;" size="3">
+                                            <input type="text" name="students[<?php echo $studentId; ?>][scores][<?php echo $subjectCode; ?>][mot]" class="form-control form-control-sm score-input" value="<?php echo htmlspecialchars($scores['mot_score'] ?? ''); ?>" style="display: none;" size="3">
                                         </td>
                                         <td>
                                             <span class="score-display"><?php echo htmlspecialchars($scores['eot_score'] ?? '-'); ?></span>
-                                            <input type="text" name="students[<?php echo $studentId; ?>][scores][<?php echo $subjectCode; ?>][eot]" class="form-control score-input" value="<?php echo htmlspecialchars($scores['eot_score'] ?? ''); ?>" style="display: none;" size="3">
+                                            <input type="text" name="students[<?php echo $studentId; ?>][scores][<?php echo $subjectCode; ?>][eot]" class="form-control form-control-sm score-input" value="<?php echo htmlspecialchars($scores['eot_score'] ?? ''); ?>" style="display: none;" size="3">
                                             <?php if ($subject_id): ?>
                                                 <input type="hidden" name="students[<?php echo $studentId; ?>][scores][<?php echo $subjectCode; ?>][subject_id]" value="<?php echo $subject_id; ?>">
                                             <?php endif; ?>
@@ -212,10 +267,10 @@ $subjectDisplayNames = [
                             <tr id="newStudentTemplateRow" style="display: none;">
                                 <td>New</td>
                                 <td class="student-name-col">
-                                    <input type="text" name="new_student[0][name]" class="form-control" placeholder="Student Name">
+                                    <input type="text" name="new_student[0][name]" class="form-control form-control-sm" placeholder="Student Name">
                                 </td>
                                 <td>
-                                    <input type="text" name="new_student[0][lin_no]" class="form-control" placeholder="LIN No.">
+                                    <input type="text" name="new_student[0][lin_no]" class="form-control form-control-sm" placeholder="LIN No.">
                                 </td>
                                 <?php foreach ($uniqueSubjectCodesInBatch as $subjectCode => $subjectFullName): ?>
                                     <?php
@@ -231,10 +286,10 @@ $subjectDisplayNames = [
                                             }
                                         }
                                     ?>
-                                    <td><input type="text" name="new_student[0][scores][<?php echo $subjectCode; ?>][bot]" class="form-control" placeholder="BOT" size="3"></td>
-                                    <td><input type="text" name="new_student[0][scores][<?php echo $subjectCode; ?>][mot]" class="form-control" placeholder="MOT" size="3"></td>
+                                    <td><input type="text" name="new_student[0][scores][<?php echo $subjectCode; ?>][bot]" class="form-control form-control-sm" placeholder="BOT" size="3"></td>
+                                    <td><input type="text" name="new_student[0][scores][<?php echo $subjectCode; ?>][mot]" class="form-control form-control-sm" placeholder="MOT" size="3"></td>
                                     <td>
-                                        <input type="text" name="new_student[0][scores][<?php echo $subjectCode; ?>][eot]" class="form-control" placeholder="EOT" size="3">
+                                        <input type="text" name="new_student[0][scores][<?php echo $subjectCode; ?>][eot]" class="form-control form-control-sm" placeholder="EOT" size="3">
                                         <?php if ($any_subject_id_for_code): // Use subject_id if available for consistency ?>
                                             <input type="hidden" name="new_student[0][scores][<?php echo $subjectCode; ?>][subject_id]" value="<?php echo $any_subject_id_for_code; ?>">
                                         <?php else: // Fallback to sending subject_code if ID is not found (handle in backend) ?>
@@ -247,12 +302,12 @@ $subjectDisplayNames = [
                     </table>
                 </div>
                 <div class="text-center mt-2 mb-3" id="addStudentBtnContainer" style="display: none;">
-                    <button type="button" id="addAnotherStudentBtn" class="btn btn-success"><i class="fas fa-plus"></i> Add Another Student</button>
+                    <button type="button" id="addAnotherStudentBtn" class="btn btn-success btn-sm"><i class="fas fa-plus"></i> Add Another Student</button>
                 </div>
             <?php else: ?>
                 <div class="alert alert-info">No student scores found for this batch. The import might have been empty or encountered issues with specific files. Please verify the uploaded files for this batch. You can add students once editing is enabled if this batch is meant to be populated manually.</div>
                 <!-- Minimal new student row for initially empty batch -->
-                 <table id="scoresTable" class="table table-bordered table-striped table-hover" style="display:none;"> <!-- Hidden initially if no students -->
+                 <table id="scoresTable" class="table table-bordered table-striped table-hover table-compact" style="display:none;"> <!-- Hidden initially if no students -->
                      <thead class="table-light">
                         <tr>
                             <th rowspan="2" style="vertical-align:middle;">#</th>
@@ -281,16 +336,16 @@ $subjectDisplayNames = [
                         <tr id="newStudentTemplateRow" style="display: none;">
                                 <td>New</td>
                                 <td class="student-name-col">
-                                    <input type="text" name="new_student[0][name]" class="form-control" placeholder="Student Name">
+                                    <input type="text" name="new_student[0][name]" class="form-control form-control-sm" placeholder="Student Name">
                                 </td>
                                 <td>
-                                    <input type="text" name="new_student[0][lin_no]" class="form-control" placeholder="LIN No.">
+                                    <input type="text" name="new_student[0][lin_no]" class="form-control form-control-sm" placeholder="LIN No.">
                                 </td>
                                 <?php foreach ($uniqueSubjectCodesInBatch as $subjectCode => $subjectFullName): ?>
-                                    <td><input type="text" name="new_student[0][scores][<?php echo $subjectCode; ?>][bot]" class="form-control" placeholder="BOT" size="3"></td>
-                                    <td><input type="text" name="new_student[0][scores][<?php echo $subjectCode; ?>][mot]" class="form-control" placeholder="MOT" size="3"></td>
+                                    <td><input type="text" name="new_student[0][scores][<?php echo $subjectCode; ?>][bot]" class="form-control form-control-sm" placeholder="BOT" size="3"></td>
+                                    <td><input type="text" name="new_student[0][scores][<?php echo $subjectCode; ?>][mot]" class="form-control form-control-sm" placeholder="MOT" size="3"></td>
                                     <td>
-                                        <input type="text" name="new_student[0][scores][<?php echo $subjectCode; ?>][eot]" class="form-control" placeholder="EOT" size="3">
+                                        <input type="text" name="new_student[0][scores][<?php echo $subjectCode; ?>][eot]" class="form-control form-control-sm" placeholder="EOT" size="3">
                                         <input type="hidden" name="new_student[0][scores][<?php echo $subjectCode; ?>][subject_code_fallback]" value="<?php echo $subjectCode; ?>">
                                     </td>
                                 <?php endforeach; ?>
@@ -298,7 +353,7 @@ $subjectDisplayNames = [
                     </tbody>
                 </table>
                  <div class="text-center mt-2 mb-3" id="addStudentBtnContainer" style="display: none;">
-                    <button type="button" id="addAnotherStudentBtn" class="btn btn-success"><i class="fas fa-plus"></i> Add Another Student</button>
+                    <button type="button" id="addAnotherStudentBtn" class="btn btn-success btn-sm"><i class="fas fa-plus"></i> Add Another Student</button>
                 </div>
             <?php endif; ?>
         </form>
@@ -318,7 +373,11 @@ $subjectDisplayNames = [
             const newStudentTemplateRow = document.getElementById('newStudentTemplateRow');
             const addAnotherStudentBtn = document.getElementById('addAnotherStudentBtn');
             const addStudentBtnContainer = document.getElementById('addStudentBtnContainer');
+            const studentSearchInput = document.getElementById('studentSearchInput');
+            const studentSearchResultsContainer = document.getElementById('studentSearchResults');
             let newStudentIndex = 0;
+            let searchTimeout = null;
+
 
             if (!scoresTable && !enableEditingBtn) { // If table doesn't exist, editing makes no sense
                 if(enableEditingBtn) enableEditingBtn.style.display = 'none';
@@ -339,6 +398,22 @@ $subjectDisplayNames = [
                 return;
             }
 
+            function highlightRow(row) {
+                // Remove highlight from other rows first
+                const currentlyHighlighted = scoresTable.querySelector('tr.highlight-row');
+                if (currentlyHighlighted) {
+                    currentlyHighlighted.classList.remove('highlight-row');
+                    // Apply to all TDs within that row
+                    Array.from(currentlyHighlighted.cells).forEach(cell => cell.classList.remove('highlight-row'));
+                }
+
+                // Add highlight to current row (all its cells)
+                Array.from(row.cells).forEach(cell => cell.classList.add('highlight-row'));
+
+                setTimeout(() => {
+                    Array.from(row.cells).forEach(cell => cell.classList.remove('highlight-row'));
+                }, 2500); // Highlight for 2.5 seconds
+            }
 
             function toggleEditMode(isEditing) {
                 const displayElements = scoresTable.querySelectorAll('.score-display');
@@ -434,6 +509,79 @@ $subjectDisplayNames = [
                     scoresTable.querySelector('tbody').insertBefore(newRow, newStudentTemplateRow);
                 });
             }
+
+            // Live Search Logic
+            if(studentSearchInput && studentSearchResultsContainer) {
+                studentSearchInput.addEventListener('input', function() {
+                    const searchTerm = this.value.trim();
+                    clearTimeout(searchTimeout);
+
+                    if (searchTerm.length < 2) {
+                        studentSearchResultsContainer.innerHTML = '';
+                        studentSearchResultsContainer.style.display = 'none';
+                        return;
+                    }
+
+                    studentSearchResultsContainer.style.display = 'block';
+                    studentSearchResultsContainer.innerHTML = '<div class="list-group-item disabled">Searching...</div>';
+
+
+                    searchTimeout = setTimeout(() => {
+                        fetch(`live_search_students.php?batch_id=<?php echo $batch_id; ?>&term=${encodeURIComponent(searchTerm)}`)
+                            .then(response => {
+                                if (!response.ok) {
+                                    throw new Error(`HTTP error! status: ${response.status}`);
+                                }
+                                return response.json();
+                            })
+                            .then(data => {
+                                studentSearchResultsContainer.innerHTML = '';
+                                if (data.error) {
+                                     studentSearchResultsContainer.innerHTML = `<div class="list-group-item list-group-item-danger">${data.error}</div>`;
+                                } else if (data.length > 0) {
+                                    data.forEach(student => {
+                                        const item = document.createElement('a');
+                                        item.href = '#'; // Prevent page jump
+                                        item.className = 'list-group-item list-group-item-action';
+                                        item.textContent = student.student_name; // Assuming student_name is returned
+                                        item.dataset.studentId = student.id;     // Assuming id is returned
+                                        item.addEventListener('click', function(e) {
+                                            e.preventDefault();
+                                            const studentId = this.dataset.studentId;
+                                            const targetRow = scoresTable.querySelector(`tr[data-student-id="${studentId}"]`);
+                                            if (targetRow) {
+                                                targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                highlightRow(targetRow);
+                                            }
+                                            studentSearchInput.value = ''; // Clear search input
+                                            studentSearchResultsContainer.innerHTML = ''; // Clear results
+                                            studentSearchResultsContainer.style.display = 'none'; // Hide results
+                                        });
+                                        studentSearchResultsContainer.appendChild(item);
+                                    });
+                                } else {
+                                    studentSearchResultsContainer.innerHTML = '<div class="list-group-item disabled">No students found matching your search in this batch.</div>';
+                                }
+                                studentSearchResultsContainer.style.display = 'block'; // Ensure it's visible
+                            })
+                            .catch(error => {
+                                console.error('Error fetching search results:', error);
+                                studentSearchResultsContainer.innerHTML = '<div class="list-group-item list-group-item-danger">Error loading results.</div>';
+                                studentSearchResultsContainer.style.display = 'block'; // Ensure it's visible
+                            });
+                    }, 300); // Debounce requests by 300ms
+                });
+
+                // Hide search results if clicked outside
+                document.addEventListener('click', function(event) {
+                    if (studentSearchInput && studentSearchResultsContainer) { // Check if elements exist
+                        if (!studentSearchInput.contains(event.target) && !studentSearchResultsContainer.contains(event.target)) {
+                            studentSearchResultsContainer.style.display = 'none';
+                        }
+                    }
+                });
+            }
+
         });
     </script>
 </body>

@@ -503,4 +503,37 @@ function updateStudentDetails(PDO $pdo, int $studentId, string $studentName, ?st
     }
 }
 
+/**
+ * Searches for students within a specific batch by name.
+ * @param PDO $pdo
+ * @param string $searchTerm
+ * @param int $batchId
+ * @param int $limit
+ * @return array
+ */
+function searchStudentsByNameInBatch(PDO $pdo, string $searchTerm, int $batchId, int $limit = 10): array {
+    // We need to find students who are part of the given batch and match the search term.
+    // Students are linked to a batch via the scores table (or student_report_summary).
+    // Let's use the scores table as it's fundamental to a student being "in" a batch with marks.
+    $sql = "SELECT DISTINCT s.id, s.student_name
+            FROM students s
+            JOIN scores sc ON s.id = sc.student_id
+            WHERE sc.report_batch_id = :batch_id
+            AND s.student_name LIKE :search_term
+            ORDER BY s.student_name ASC
+            LIMIT :limit_val";
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->bindValue(':batch_id', $batchId, PDO::PARAM_INT);
+    $stmt->bindValue(':search_term', '%' . trim($searchTerm) . '%', PDO::PARAM_STR);
+    $stmt->bindValue(':limit_val', $limit, PDO::PARAM_INT);
+
+    try {
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        error_log("DAL Error: searchStudentsByNameInBatch failed. Batch: $batchId, Term: $searchTerm. Error: " . $e->getMessage());
+        return []; // Return empty array on error
+    }
+}
 ?>
