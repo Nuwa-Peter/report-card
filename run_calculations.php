@@ -223,6 +223,19 @@ try {
 
     $pdo->commit();
     $_SESSION['success_message'] = "Calculations, summaries, and remarks generated and saved successfully for Batch ID: " . htmlspecialchars($batch_id);
+
+    // Log successful calculation
+    $logDescriptionCalc = "Re-calculated summaries and remarks for batch '" . htmlspecialchars($batchSettings['class_name'] . " " . $batchSettings['term_name'] . " " . $batchSettings['year_name']) . "' (ID: " . $batch_id . ").";
+    logActivity(
+        $pdo,
+        $_SESSION['user_id'] ?? null,
+        $_SESSION['username'] ?? 'System',
+        'BATCH_RECALCULATED',
+        $logDescriptionCalc,
+        'batch',
+        $batch_id
+    );
+
 } catch (Exception $e) {
     if ($pdo->inTransaction()) { $pdo->rollBack(); }
     $_SESSION['error_message'] = "Error during calculations for Batch ID " . htmlspecialchars($batch_id) . ": " . $e->getMessage() . " (File: " . basename($e->getFile()) . ", Line: " . $e->getLine() .")";

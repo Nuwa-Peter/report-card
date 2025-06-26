@@ -184,6 +184,20 @@ if ($isP1_P3 && $batch_id) {
     $classAverageP1P3 = ($validStudentsForClassAverageP1P3 > 0) ? round($totalClassAverageEotP1P3 / $validStudentsForClassAverageP1P3, 2) : 0;
 }
 
+// Log viewing action if a batch is successfully loaded and displayed
+if ($batch_id && $batchSettings) {
+    $logDescriptionSummary = "Viewed summary sheet for batch '" . htmlspecialchars($batchSettings['class_name'] . " " . $batchSettings['term_name'] . " " . $batchSettings['year_name']) . "' (ID: " . $batch_id . ").";
+    logActivity(
+        $pdo,
+        $_SESSION['user_id'] ?? null,
+        $_SESSION['username'] ?? 'System',
+        'SUMMARY_SHEET_VIEWED',
+        $logDescriptionSummary,
+        'batch',
+        $batch_id
+    );
+}
+
 // For Chart Labels - map internal keys to more descriptive labels
 $divisionChartLabels = [
     'I' => 'Division I', 'II' => 'Division II', 'III' => 'Division III', 'IV' => 'Division IV',

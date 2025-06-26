@@ -584,4 +584,28 @@ function logActivity(
         return false;
     }
 }
+
+/**
+ * Fetches the most recent activity logs, typically for an admin feed.
+ *
+ * @param PDO $pdo The PDO database connection object.
+ * @param int $limit The maximum number of records to fetch.
+ * @return array An array of activity log records.
+ */
+function getRecentActivities(PDO $pdo, int $limit = 15): array {
+    $sql = "SELECT id, username, action_type, description, timestamp, entity_type, entity_id
+            FROM activity_log
+            ORDER BY timestamp DESC
+            LIMIT :limit_val";
+
+    try {
+        $stmt = $pdo->prepare($sql);
+        $stmt->bindValue(':limit_val', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        error_log("DAL Error: getRecentActivities failed. Error: " . $e->getMessage());
+        return []; // Return empty array on error
+    }
+}
 ?>

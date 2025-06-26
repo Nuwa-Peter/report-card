@@ -144,6 +144,18 @@ try {
     // Optional: Clear session data for this batch after PDF generation
     // unset($_SESSION['enriched_students_data_for_batch_' . $batch_id]);
 
+    // Log successful PDF generation before outputting
+    $logDescription = "Generated PDF report for batch '" . htmlspecialchars($batchSettingsData['class_name'] . " " . $batchSettingsData['term_name'] . " " . $batchSettingsData['year_name']) . "' (ID: " . $batch_id . ").";
+    logActivity(
+        $pdo,
+        $_SESSION['user_id'] ?? null,
+        $_SESSION['username'] ?? 'System',
+        'REPORT_GENERATED',
+        $logDescription,
+        'batch',
+        $batch_id
+    );
+
     $mpdf->Output($pdfFileName, $outputMode);
     exit;
 
