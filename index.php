@@ -286,7 +286,7 @@ try {
                 <div class="ms-auto d-flex align-items-center">
                     <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'superadmin'): ?>
                         <!-- Superadmin Activity Feed Bell -->
-                        <div class="nav-item dropdown me-2"> {/* Using div instead of li for direct flex alignment */}
+                        <div class="nav-item dropdown me-2">
                             <a class="nav-link" href="#" id="adminActivityBellLink" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Recent Activity">
                                 <i class="fas fa-bell text-secondary"></i>
                                 <span id="adminActivityBadge" class="badge rounded-pill bg-danger ms-1" style="display:none; font-size: 0.6em; vertical-align: top; margin-left: -2px;"></span>
@@ -294,8 +294,7 @@ try {
                             <ul class="dropdown-menu dropdown-menu-end shadow border-0" aria-labelledby="adminActivityBellLink" id="adminActivityDropdown" style="width: 380px; max-height: 450px; overflow-y: auto;">
                                 <li><h6 class="dropdown-header bg-light py-2">Recent System Activity</h6></li>
                                 <li><div id="adminActivityDropdownBody" class="p-2">
-                                    {/* Activity items will be injected here by JS */}
-                                    <p class="text-center text-muted my-3">Loading activities...</p>
+                                    {/* Activity items will be injected here by JS */}<p class="text-center text-muted my-3">Loading activities...</p>
                                 </div></li>
                                 <li><hr class="dropdown-divider my-0"></li>
                                 <li><a class="dropdown-item text-center py-2 small" href="view_activity_log.php">View All Logs</a></li>
