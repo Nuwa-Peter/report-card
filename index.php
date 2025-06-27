@@ -255,6 +255,17 @@ try {
                 <a href="summary_sheet.php"><i class="fas fa-chart-pie"></i> Summary Sheets</a> <!-- Direct link, summary_sheet.php handles batch selection -->
             </li>
             <li>
+                <a href="#studentReportsSubmenu" data-bs-toggle="collapse" aria-expanded="false" class="dropdown-toggle"><i class="fas fa-user-graduate"></i> Student Analytics</a>
+                <ul class="collapse list-unstyled" id="studentReportsSubmenu">
+                    <li>
+                        <a href="historical_performance.php"><i class="fas fa-history"></i> Historical Performance</a>
+                    </li>
+                    <li>
+                        <a href="comparative_analysis.php"><i class="fas fa-balance-scale"></i> Comparative Analysis</a>
+                    </li>
+                </ul>
+            </li>
+            <li>
                 <a href="about.php"><i class="fas fa-info-circle"></i> About & Help</a>
             </li>
             <!--

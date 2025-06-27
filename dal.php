@@ -684,4 +684,138 @@ function deleteActivityLogs(PDO $pdo, ?string $olderThanTimestamp = null): int {
         return -1; // Indicate an error
     }
 }
+
+/**
+ * Fetches all historical performance summaries for a given student.
+ * Includes term, year, and class information for each summary.
+ * Ordered by year and term.
+ *
+ * @param PDO $pdo The PDO database connection object.
+ * @param int $studentId The ID of the student.
+ * @return array An array of historical performance records.
+ */
+function getStudentHistoricalPerformance(PDO $pdo, int $studentId): array {
+    $sql = "SELECT
+                srs.*,
+                rbs.term_end_date,
+                ay.year_name,
+                t.term_name,
+                c.class_name
+            FROM student_report_summary srs
+            JOIN report_batch_settings rbs ON srs.report_batch_id = rbs.id
+            JOIN academic_years ay ON rbs.academic_year_id = ay.id
+            JOIN terms t ON rbs.term_id = t.id
+            JOIN classes c ON rbs.class_id = c.id
+            WHERE srs.student_id = :student_id
+            ORDER BY ay.year_name ASC, t.id ASC"; // Order by term ID assuming it reflects term sequence
+    try {
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([':student_id' => $studentId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        error_log("DAL Error: getStudentHistoricalPerformance failed for Student ID $studentId. Error: " . $e->getMessage());
+        return [];
+    }
+}
+
+/**
+ * Fetches a student's scores for a specific subject across multiple terms/batches.
+ * Includes term, year, and class information.
+ * Ordered by year and term.
+ *
+ * @param PDO $pdo The PDO database connection object.
+ * @param int $studentId The ID of the student.
+ * @param int $subjectId The ID of the subject.
+ * @return array An array of scores for the subject across terms.
+ */
+function getStudentSubjectPerformanceAcrossTerms(PDO $pdo, int $studentId, int $subjectId): array {
+    $sql = "SELECT
+                sc.bot_score,
+                sc.mot_score,
+                sc.eot_score,
+                -- If grades are stored in scores table, fetch them here e.g., sc.eot_grade
+                rbs.term_end_date,
+                ay.year_name,
+                t.term_name,
+                c.class_name,
+                subj.subject_name_full,
+                subj.subject_code
+            FROM scores sc
+            JOIN subjects subj ON sc.subject_id = subj.id
+            JOIN report_batch_settings rbs ON sc.report_batch_id = rbs.id
+            JOIN academic_years ay ON rbs.academic_year_id = ay.id
+            JOIN terms t ON rbs.term_id = t.id
+            JOIN classes c ON rbs.class_id = c.id
+            WHERE sc.student_id = :student_id AND sc.subject_id = :subject_id
+            ORDER BY ay.year_name ASC, t.id ASC"; // Order by term ID
+    try {
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([':student_id' => $studentId, ':subject_id' => $subjectId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        error_log("DAL Error: getStudentSubjectPerformanceAcrossTerms failed for Student ID $studentId, Subject ID $subjectId. Error: " . $e->getMessage());
+        return [];
+    }
+}
+
+/**
+ * Fetches all subjects a student has scores for in a specific batch.
+ * Useful for populating a subject dropdown for comparative analysis.
+ *
+ * @param PDO $pdo
+ * @param integer $studentId
+ * @param integer $batchId
+ * @return array
+ */
+function getStudentSubjectsForBatch(PDO $pdo, int $studentId, int $batchId): array {
+    $sql = "SELECT DISTINCT
+                subj.id as subject_id,
+                subj.subject_name_full,
+                subj.subject_code
+            FROM scores sc
+            JOIN subjects subj ON sc.subject_id = subj.id
+            WHERE sc.student_id = :student_id AND sc.report_batch_id = :batch_id
+            ORDER BY subj.subject_name_full ASC";
+    try {
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([':student_id' => $studentId, ':batch_id' => $batchId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        error_log("DAL Error: getStudentSubjectsForBatch failed for Student ID $studentId, Batch ID $batchId. Error: " . $e->getMessage());
+        return [];
+    }
+}
+
+/**
+ * Fetches all scores for a student within a specific batch, detailed by subject.
+ * This is similar to parts of getStudentsWithScoresForBatch but focused on a single student.
+ *
+ * @param PDO $pdo
+ * @param integer $studentId
+ * @param integer $batchId
+ * @return array
+ */
+function getStudentScoresForBatchDetailed(PDO $pdo, int $studentId, int $batchId): array {
+    $sql = "SELECT
+                subj.id as subject_id,
+                subj.subject_code,
+                subj.subject_name_full,
+                sc.bot_score,
+                sc.mot_score,
+                sc.eot_score
+                -- Add sc.bot_grade, sc.mot_grade, sc.eot_grade here if they are added to the 'scores' table
+            FROM scores sc
+            JOIN subjects subj ON sc.subject_id = subj.id
+            WHERE sc.student_id = :student_id AND sc.report_batch_id = :batch_id
+            ORDER BY subj.subject_name_full ASC";
+    try {
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([':student_id' => $studentId, ':batch_id' => $batchId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC); // Returns an array of subjects with their scores
+    } catch (PDOException $e) {
+        error_log("DAL Error: getStudentScoresForBatchDetailed failed for Student ID $studentId, Batch ID $batchId. Error: " . $e->getMessage());
+        return [];
+    }
+}
+
 ?>
