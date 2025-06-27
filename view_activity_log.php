@@ -177,7 +177,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SESSION['role']) && $_SESSI
                         <p><small class="text-muted">This will permanently delete all activity log entries.</small></p>
                         <form method="POST" action="view_activity_log.php" onsubmit="return confirm('DANGER! Are you absolutely sure you want to delete ALL activity logs? This action cannot be undone.');">
                             <input type="hidden" name="action" value="delete_all_logs">
-                            <input type="hidden" name="confirm_delete_all" value="yes"> {/* Added for server-side check if needed, though JS confirm is primary */}
+                            <input type="hidden" name="confirm_delete_all" value="yes">
                             <button type="submit" class="btn btn-danger btn-sm">
                                 <i class="fas fa-trash-alt"></i> Clear All Logs
                             </button>

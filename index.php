@@ -297,7 +297,7 @@ try {
                                     <p class="text-center text-muted my-3">Loading activities...</p>
                                 </div></li>
                                 <li><hr class="dropdown-divider my-0"></li>
-                                <li><a class="dropdown-item text-center py-1 small" id="adminDismissNotificationsLink" href="#">Dismiss New</a></li>
+                                <li><a class="dropdown-item text-center py-1 small" id="adminDismissNotificationsLink" href="#">Mark All as Read</a></li>
                                 <li><a class="dropdown-item text-center py-1 small" href="view_activity_log.php">View All Logs</a></li>
                             </ul>
                         </div>
