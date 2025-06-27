@@ -94,12 +94,16 @@ date_default_timezone_set('Africa/Kampala'); // Or user's preferred timezone
             <p class="datetime-display">Current Date & Time: <?php echo date("D, d M Y H:i:s"); ?></p>
         </div>
 
-        <section id="school-contacts">
-            <h3 class="section-title">School Contacts</h3>
-            <p><strong>Maria Ow'embabazi Primary School</strong></p>
-            <p>P.O BOX 406, MBARARA</p>
-            <p>Tel. 0700172858</p>
-            <p>Email: houseofnazareth.schools@gmail.com</p>
+        <section id="school-contacts" style="text-align: center; margin-bottom: 2rem;">
+            <h3 class="section-title" style="display: block; text-align: center;">School Contacts</h3>
+            <div style="margin-top: 1rem;">
+                <p style="font-size: 1.2em; font-weight: bold; margin-bottom: 0.5rem;">Maria Ow'embabazi Primary School</p>
+                <address style="font-style: normal; line-height: 1.6;">
+                    P.O BOX 406, MBARARA<br>
+                    Tel. 0700172858<br>
+                    Email: houseofnazareth.schools@gmail.com
+                </address>
+            </div>
             <!-- Add more contact details as needed -->
         </section>
 

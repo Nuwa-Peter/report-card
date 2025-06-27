@@ -317,10 +317,10 @@ try {
                     <?php if (isset($_SESSION['username'])): ?>
                         <div class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle text-dark" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="fas fa-user me-1"></i> <?php echo htmlspecialchars($_SESSION['username']); ?>
+                                <i class="fas fa-user-circle me-1 fa-lg"></i> <?php echo htmlspecialchars($_SESSION['username']); ?>
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-                                <li><a class="dropdown-item" href="profile.php"><i class="fas fa-user-circle me-2"></i>About User</a></li>
+                                <li><a class="dropdown-item" href="profile.php"><i class="fas fa-address-card me-2"></i>About User</a></li>
                                 <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>Others (Placeholder)</a></li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item" href="logout.php"><i class="fas fa-sign-out-alt me-2"></i>Sign Out</a></li>
