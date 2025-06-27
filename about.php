@@ -97,8 +97,8 @@ date_default_timezone_set('Africa/Kampala'); // Or user's preferred timezone
         </div>
 
         <div class="text-center mb-4">
-            <a href="download_user_manual.php" class="btn btn-primary btn-lg">
-                <i class="fas fa-download me-2"></i> Download User Manual (PDF)
+            <a href="download_user_manual.php" class="btn btn-danger btn-lg"> <!-- Changed btn-primary to btn-danger for red -->
+                <i class="fas fa-file-pdf me-2"></i> Download User Manual (PDF) <!-- Changed icon to fa-file-pdf -->
             </a>
         </div>
 
@@ -294,7 +294,7 @@ date_default_timezone_set('Africa/Kampala'); // Or user's preferred timezone
                 <li><strong>Peter Nuwahereza</strong> (nuwapeter2013@gmail.com)
                     <ul><li><em>GitHub: [User to provide GitHub info if desired]</em></li></ul>
                 </li>
-                <li>with the assistance of <strong>Jules (AI Agent)</strong>.</li>
+                <li>with the assistance of <strong>(AI Agent)</strong>.</li> <!-- Removed "Jules" -->
             </ul>
             <p>We hope this system serves Maria Ow'embabazi Primary School effectively!</p>
         </section>
