@@ -608,4 +608,47 @@ function getRecentActivities(PDO $pdo, int $limit = 15): array {
         return []; // Return empty array on error
     }
 }
+
+/**
+ * Fetches a paginated list of all global activity logs.
+ *
+ * @param PDO $pdo The PDO database connection object.
+ * @param int $limit The maximum number of records to fetch per page.
+ * @param int $offset The number of records to skip (for pagination).
+ * @return array An array of activity log records.
+ */
+function getGlobalActivityLog(PDO $pdo, int $limit = 25, int $offset = 0): array {
+    $sql = "SELECT id, timestamp, username, action_type, description, entity_type, entity_id
+            FROM activity_log
+            ORDER BY timestamp DESC
+            LIMIT :limit_val OFFSET :offset_val";
+
+    try {
+        $stmt = $pdo->prepare($sql);
+        $stmt->bindValue(':limit_val', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset_val', $offset, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        error_log("DAL Error: getGlobalActivityLog failed. Error: " . $e->getMessage());
+        return []; // Return empty array on error
+    }
+}
+
+/**
+ * Fetches the total count of all global activity logs.
+ *
+ * @param PDO $pdo The PDO database connection object.
+ * @return int The total number of activity log records.
+ */
+function getGlobalActivityLogCount(PDO $pdo): int {
+    $sql = "SELECT COUNT(*) FROM activity_log";
+    try {
+        $stmt = $pdo->query($sql);
+        return (int)$stmt->fetchColumn();
+    } catch (PDOException $e) {
+        error_log("DAL Error: getGlobalActivityLogCount failed. Error: " . $e->getMessage());
+        return 0; // Return 0 on error
+    }
+}
 ?>
