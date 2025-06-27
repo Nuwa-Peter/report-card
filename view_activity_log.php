@@ -51,6 +51,53 @@ try {
     // Optionally redirect or display error on page
 }
 
+// Handle Log Deletion Actions
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SESSION['role']) && $_SESSION['role'] === 'superadmin') {
+    if (isset($_POST['action'])) {
+        $action = $_POST['action'];
+        $deletedCount = -1;
+        $logMessage = "";
+
+        if ($action === 'delete_all_logs') {
+            if (isset($_POST['confirm_delete_all'])) { // Check if confirmation was given
+                $deletedCount = deleteActivityLogs($pdo, null);
+                $logMessage = "Deleted all activity logs ($deletedCount entries).";
+                $_SESSION['success_message'] = "All activity logs have been deleted ($deletedCount entries).";
+            } else {
+                $_SESSION['error_message'] = "Deletion not confirmed.";
+            }
+        } elseif ($action === 'delete_logs_older_than' && isset($_POST['older_than_date'])) {
+            $olderThanDate = trim($_POST['older_than_date']);
+            if (!empty($olderThanDate)) {
+                // Validate date format if necessary, though SQL might handle some variations.
+                // For simplicity, assuming YYYY-MM-DD format from date input. Append time for full day.
+                $olderThanTimestamp = $olderThanDate . " 00:00:00";
+                $deletedCount = deleteActivityLogs($pdo, $olderThanTimestamp);
+                $logMessage = "Deleted activity logs older than $olderThanDate ($deletedCount entries).";
+                $_SESSION['success_message'] = "Activity logs older than $olderThanDate have been deleted ($deletedCount entries).";
+            } else {
+                $_SESSION['error_message'] = "Date for 'older than' deletion not provided.";
+            }
+        }
+
+        if ($deletedCount > -1) { // If a delete action was attempted (successfully or 0 rows)
+            logActivity(
+                $pdo,
+                $_SESSION['user_id'],
+                $_SESSION['username'],
+                'LOGS_DELETED',
+                $logMessage,
+                null,
+                null,
+                null
+            );
+        }
+        // Redirect to the same page to show messages and refresh log view (also clears POST)
+        header("Location: view_activity_log.php" . ($currentPage > 1 ? "?page=$currentPage" : ""));
+        exit;
+    }
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -120,6 +167,42 @@ try {
         <?php if (isset($_SESSION['success_message'])): ?>
             <div class="alert alert-success" role="alert"><?php echo htmlspecialchars($_SESSION['success_message']); unset($_SESSION['success_message']); ?></div>
         <?php endif; ?>
+
+        <div class="card mb-4">
+            <div class="card-header">Log Management</div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <h5>Clear All Logs</h5>
+                        <p><small class="text-muted">This will permanently delete all activity log entries.</small></p>
+                        <form method="POST" action="view_activity_log.php" onsubmit="return confirm('DANGER! Are you absolutely sure you want to delete ALL activity logs? This action cannot be undone.');">
+                            <input type="hidden" name="action" value="delete_all_logs">
+                            <input type="hidden" name="confirm_delete_all" value="yes"> {/* Added for server-side check if needed, though JS confirm is primary */}
+                            <button type="submit" class="btn btn-danger btn-sm">
+                                <i class="fas fa-trash-alt"></i> Clear All Logs
+                            </button>
+                        </form>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Clear Logs Older Than</h5>
+                        <form method="POST" action="view_activity_log.php" class="row g-2 align-items-end" onsubmit="return confirm('Are you sure you want to delete logs older than the selected date? This action cannot be undone.');">
+                            <input type="hidden" name="action" value="delete_logs_older_than">
+                            <div class="col-auto">
+                                <label for="older_than_date" class="form-labelvisually-hidden">Date:</label>
+                                <input type="date" class="form-control form-control-sm" id="older_than_date" name="older_than_date" required
+                                       max="<?php echo date('Y-m-d'); // Prevent selecting future dates ?>">
+                            </div>
+                            <div class="col-auto">
+                                <button type="submit" class="btn btn-warning btn-sm">
+                                    <i class="fas fa-calendar-times"></i> Clear Older Logs
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
 
         <div class="table-responsive">
             <table class="table table-striped table-hover table-bordered">

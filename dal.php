@@ -651,4 +651,37 @@ function getGlobalActivityLogCount(PDO $pdo): int {
         return 0; // Return 0 on error
     }
 }
+
+/**
+ * Deletes activity logs.
+ * If $olderThanTimestamp is null, all logs are deleted.
+ * Otherwise, logs older than the given timestamp are deleted.
+ *
+ * @param PDO $pdo The PDO database connection object.
+ * @param string|null $olderThanTimestamp Timestamp string (e.g., 'YYYY-MM-DD HH:MM:SS').
+ * @return int Number of rows deleted, or -1 on error.
+ */
+function deleteActivityLogs(PDO $pdo, ?string $olderThanTimestamp = null): int {
+    if ($olderThanTimestamp === null) {
+        // Delete all logs
+        $sql = "DELETE FROM activity_log";
+    } else {
+        // Delete logs older than a specific timestamp
+        // Ensure the timestamp format is valid for SQL comparison.
+        // This assumes $olderThanTimestamp is already in a format SQL understands (e.g., 'YYYY-MM-DD HH:MM:SS')
+        $sql = "DELETE FROM activity_log WHERE timestamp < :older_than_timestamp";
+    }
+
+    try {
+        $stmt = $pdo->prepare($sql);
+        if ($olderThanTimestamp !== null) {
+            $stmt->bindValue(':older_than_timestamp', $olderThanTimestamp, PDO::PARAM_STR);
+        }
+        $stmt->execute();
+        return $stmt->rowCount();
+    } catch (PDOException $e) {
+        error_log("DAL Error: deleteActivityLogs failed. Error: " . $e->getMessage());
+        return -1; // Indicate an error
+    }
+}
 ?>

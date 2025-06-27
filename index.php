@@ -294,10 +294,11 @@ try {
                             <ul class="dropdown-menu dropdown-menu-end shadow border-0" aria-labelledby="adminActivityBellLink" id="adminActivityDropdown" style="width: 380px; max-height: 450px; overflow-y: auto;">
                                 <li><h6 class="dropdown-header bg-light py-2">Recent System Activity</h6></li>
                                 <li><div id="adminActivityDropdownBody" class="p-2">
-                                    {/* Activity items will be injected here by JS */}<p class="text-center text-muted my-3">Loading activities...</p>
+                                    <p class="text-center text-muted my-3">Loading activities...</p>
                                 </div></li>
                                 <li><hr class="dropdown-divider my-0"></li>
-                                <li><a class="dropdown-item text-center py-2 small" href="view_activity_log.php">View All Logs</a></li>
+                                <li><a class="dropdown-item text-center py-1 small" id="adminDismissNotificationsLink" href="#">Dismiss New</a></li>
+                                <li><a class="dropdown-item text-center py-1 small" href="view_activity_log.php">View All Logs</a></li>
                             </ul>
                         </div>
                     <?php endif; ?>
@@ -425,6 +426,8 @@ try {
             const adminActivityBellLink = document.getElementById('adminActivityBellLink');
             const adminActivityDropdownBody = document.getElementById('adminActivityDropdownBody');
             const adminActivityBadge = document.getElementById('adminActivityBadge');
+            const adminDismissNotificationsLink = document.getElementById('adminDismissNotificationsLink');
+            let newestActivityTimestamp = null; // To store the timestamp of the newest fetched activity
 
             function formatRelativeTime(timestamp) {
                 const now = new Date();
@@ -455,6 +458,9 @@ try {
                     .then(activities => {
                         adminActivityDropdownBody.innerHTML = ''; // Clear previous items or "Loading..."
                         if (activities.length > 0) {
+                            // Determine the newest timestamp from the fetched activities
+                            newestActivityTimestamp = activities[0].timestamp; // Assuming activities are sorted DESC by timestamp
+
                             activities.forEach(activity => {
                                 const itemDiv = document.createElement('div');
                                 itemDiv.classList.add('dropdown-item-text', 'small', 'border-bottom', 'pb-1', 'mb-1');
@@ -472,11 +478,26 @@ try {
 
                             // Simple badge logic: show a count of new items (up to a limit, e.g., 9+)
                             // For a true "unread" count, the API and DB would need more logic (e.g., last_viewed_timestamp by admin)
-                            // For now, just show the number of fetched items, or "N+"
-                            let badgeCount = activities.length;
+                            // Badge Logic: Only count activities newer than the last dismissal
+                            const lastDismissedTimestamp = localStorage.getItem('adminLastDismissedActivityTimestamp');
+                            let newActivitiesCount = 0;
+                            if (lastDismissedTimestamp) {
+                                activities.forEach(activity => {
+                                    if (new Date(activity.timestamp.replace(' ', 'T') + 'Z') > new Date(lastDismissedTimestamp)) {
+                                        newActivitiesCount++;
+                                    }
+                                });
+                            } else {
+                                newActivitiesCount = activities.length; // All are new if never dismissed
+                            }
+
                             if (adminActivityBadge) {
-                                adminActivityBadge.textContent = badgeCount > 9 ? '9+' : badgeCount.toString();
-                                adminActivityBadge.style.display = 'inline-block';
+                                if (newActivitiesCount > 0) {
+                                    adminActivityBadge.textContent = newActivitiesCount > 9 ? '9+' : newActivitiesCount.toString();
+                                    adminActivityBadge.style.display = 'inline-block';
+                                } else {
+                                    adminActivityBadge.style.display = 'none';
+                                }
                             }
 
                         } else {
@@ -495,16 +516,30 @@ try {
                     });
             }
 
-            if (adminActivityBellLink) { // Check if user is superadmin (bell link exists)
-                fetchAdminActivityFeed(); // Initial fetch
+            if (adminActivityBellLink) {
+                fetchAdminActivityFeed();
 
-                // Optional: Refresh when bell is clicked (Bootstrap 5 dropdown events)
-                var activityDropdown = new bootstrap.Dropdown(adminActivityBellLink); // Ensure this is correct for your Bootstrap version
+                var activityDropdownInstance = new bootstrap.Dropdown(adminActivityBellLink);
                 adminActivityBellLink.addEventListener('show.bs.dropdown', function () {
-                    // Potentially clear badge here or refresh content
                     fetchAdminActivityFeed();
-                    // If badge was a true "unread" count, this is where you'd clear it or mark items as read via API
                 });
+
+                if (adminDismissNotificationsLink) {
+                    adminDismissNotificationsLink.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        if (adminActivityBadge) {
+                            adminActivityBadge.style.display = 'none';
+                            adminActivityBadge.textContent = '0';
+                        }
+                        // Store the timestamp of the newest activity that was visible *before* clearing,
+                        // or current time if no activities were there/fetched.
+                        const timestampToStore = newestActivityTimestamp || new Date().toISOString().slice(0, 19).replace('T', ' ');
+                        localStorage.setItem('adminLastDismissedActivityTimestamp', timestampToStore);
+
+                        // Close the dropdown
+                        activityDropdownInstance.hide();
+                    });
+                }
             }
         });
     </script>
