@@ -367,7 +367,7 @@ $subjectDisplayNames = [ /* As in summary_sheet.php - can be centralized later *
 
     <footer class="mt-auto py-3 bg-light text-center">
         <div class="container">
-            <span class="text-muted">&copy; <?php echo date("Y"); ?> Maria Ow'embabazi P/S. All rights reserved.</span>
+            <span class="text-muted">&copy; 2025 Maria Ow'embabazi Primary School - Good Christian, Good Citizen</span>
         </div>
     </footer>
 

@@ -187,6 +187,65 @@ date_default_timezone_set('Africa/Kampala'); // Or user's preferred timezone
             <!-- General Tips integrated or covered above -->
         </section>
 
+        <section id="new-features-docs" style="text-align: justify; padding-left: 15px; padding-right: 15px;">
+            <h3 class="section-title" style="text-align: center; display: block; width: 100%;">New Student Analytics Features</h3>
+
+            <div style="text-align: center; margin-bottom: 1.5rem;">
+                 The following features provide deeper insights into student performance.
+            </div>
+
+            <h4 style="text-align: center; font-weight: bold; margin-top: 1.5rem;">1. Historical Performance Tracking</h4>
+            <p><strong>Purpose:</strong> This feature allows users to view a comprehensive summary of a student's academic performance across multiple terms and academic years. It helps in identifying trends and overall progress of the student over time.</p>
+            <p><strong>Access:</strong> Navigate to "Student Analytics" from the main dashboard sidebar, then click on "Historical Performance".</p>
+            <p><strong>Usage:</strong></p>
+            <ol style="margin-left: 20px;">
+                <li>Upon accessing the page, select a student from the provided dropdown list. This list includes all students for whom performance data has been processed.</li>
+                <li>Once a student is selected, the system will display a table detailing their key performance indicators for each recorded term. This includes:
+                    <ul>
+                        <li>For P1-P3 classes: Average Score, Total Score, and Class Position.</li>
+                        <li>For P4-P7 classes: Aggregate Points and Division.</li>
+                        <li>General remarks from the Class Teacher and Head Teacher for each term will also be shown.</li>
+                    </ul>
+                </li>
+                <li>Below the table, line charts will visualize performance trends if sufficient data (more than one term) is available:
+                    <ul>
+                        <li>A chart for P1-P3 average scores over time.</li>
+                        <li>A chart for P4-P7 aggregate points over time (note: for aggregates, a lower score indicates better performance, so the chart's Y-axis is typically reversed).</li>
+                    </ul>
+                </li>
+            </ol>
+            <p><em>This tool is invaluable for tracking long-term academic development and for discussions during parent-teacher meetings.</em></p>
+            <p style="font-style: italic; font-size: 0.9em;">Relevant File: <code>historical_performance.php</code>. Key Data Access Function: <code>getStudentHistoricalPerformance()</code>.</p>
+
+            <h4 style="text-align: center; font-weight: bold; margin-top: 2rem;">2. Comparative Analysis</h4>
+            <p><strong>Purpose:</strong> This feature offers tools to conduct comparative studies of a student's performance. You can either compare their performance across different subjects within a single academic term or track their performance in a specific subject across several terms.</p>
+            <p><strong>Access:</strong> Navigate to "Student Analytics" from the main dashboard sidebar, then click on "Comparative Analysis".</p>
+            <p><strong>Usage:</strong></p>
+            <ol style="margin-left: 20px;">
+                <li>First, select a student from the main dropdown list on the page.</li>
+                <li>After selecting a student, two analysis options will be available via tabs:
+                    <ul>
+                        <li><strong>Compare Subjects (Single Term):</strong>
+                            <ol type="a" style="margin-left: 20px;">
+                                <li>Select a specific "Term/Batch" for the chosen student from the subsequent dropdown.</li>
+                                <li>A table will then display the student’s Beginning of Term (B.O.T), Mid of Term (M.O.T), and End of Term (E.O.T) scores, along with their calculated grades for all subjects taken in that selected term.</li>
+                                <li>A bar chart will also be generated to visually compare the E.O.T scores across these subjects, making it easy to identify strengths and areas needing improvement.</li>
+                            </ol>
+                        </li>
+                        <li><strong>Track Subject (Across Terms):</strong>
+                            <ol type="a" style="margin-left: 20px;">
+                                <li>Select a specific "Subject" that the student has taken from the relevant dropdown menu.</li>
+                                <li>The system will then present a table showing the student’s B.O.T, M.O.T, and E.O.T scores, plus the E.O.T grade for that single subject across all terms for which data is available.</li>
+                                <li>A line chart will illustrate the trend of the student's E.O.T scores in this subject over time, highlighting improvement or areas of concern.</li>
+                            </ol>
+                        </li>
+                    </ul>
+                </li>
+            </ol>
+            <p><em>This analytical tool is designed to help educators and parents pinpoint specific academic patterns and make informed decisions.</em></p>
+            <p style="font-style: italic; font-size: 0.9em;">Relevant File: <code>comparative_analysis.php</code>. Key Data Access Functions: <code>getStudentScoresForBatchDetailed()</code>, <code>getStudentSubjectPerformanceAcrossTerms()</code>, <code>getStudentSubjectsForBatch()</code>. Grade calculations use <code>getGradeFromScoreUtil()</code>.</p>
+        </section>
+
         <section id="troubleshooting">
             <h3 class="section-title mt-4">Troubleshooting / Common Issues</h3>
             <ul>

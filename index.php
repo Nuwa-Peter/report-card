@@ -336,9 +336,8 @@ try {
 
         <div class="container-fluid pt-3">
             <h2>Dashboard</h2>
-            <div class="main-content-card">
-                <p>Welcome to the Maria Ow'embabazi Primary School Report Card System Dashboard.</p>
-                <p>Use the sidebar to navigate through the available options. You can generate new reports, view summaries, or download templates.</p>
+            <div class="main-content-card" style="text-align: center;">
+                <p style="text-align: justify; display: inline-block; max-width: 800px;">Welcome to the Maria Ow'embabazi Primary School Report Card System Dashboard. Use the sidebar to navigate through the available options. You can generate new reports, view summaries, or download templates.</p>
                 <!-- More dashboard widgets/summaries can go here later -->
             </div>
 
@@ -417,6 +416,11 @@ try {
                 <!-- Message about academic year not found is already handled by session message display at top of page -->
             <?php endif; ?>
         </div>
+         <footer class="mt-auto py-3 bg-light text-center">
+            <div class="container">
+                <span class="text-muted">&copy; 2025 Maria Ow'embabazi Primary School - Good Christian, Good Citizen</span>
+            </div>
+        </footer>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

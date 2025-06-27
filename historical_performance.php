@@ -83,7 +83,10 @@ $subjectDisplayNames = [ /* As in summary_sheet.php - can be centralized later *
     <style>
         body { background-color: #f8f9fa; }
         .container.main-content { background-color: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-top: 20px; }
-        .table th { background-color: #e9ecef; }
+        .table .table-dark th { /* More specific selector for the dark header */
+            background-color: #212529; /* Bootstrap's standard dark */
+            color: #ffffff !important; /* Ensure text is white */
+        }
         .student-info-header { margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid #dee2e6;}
         .chart-container { max-height: 400px; margin-bottom: 2rem; }
     </style>
@@ -240,7 +243,7 @@ $subjectDisplayNames = [ /* As in summary_sheet.php - can be centralized later *
 
     <footer class="mt-auto py-3 bg-light text-center">
         <div class="container">
-            <span class="text-muted">&copy; <?php echo date("Y"); ?> Maria Ow'embabazi P/S. All rights reserved.</span>
+            <span class="text-muted">&copy; 2025 Maria Ow'embabazi Primary School - Good Christian, Good Citizen</span>
         </div>
     </footer>
 
