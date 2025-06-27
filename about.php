@@ -20,7 +20,7 @@ date_default_timezone_set('Africa/Kampala'); // Or user's preferred timezone
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>About - Report System - Maria Ow'embabazi P/S</title>
+    <title>User Manual - Report System - Maria Ow'embabazi P/S</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <link href="css/style.css" rel="stylesheet">
@@ -74,6 +74,7 @@ date_default_timezone_set('Africa/Kampala'); // Or user's preferred timezone
     </style>
 </head>
 <body>
+    <?php if (!defined('GENERATING_USER_MANUAL_PDF') || !GENERATING_USER_MANUAL_PDF): ?>
     <nav class="navbar navbar-light bg-light sticky-top shadow-sm">
         <div class="container-fluid">
             <a class="navbar-brand" href="index.php">
@@ -86,12 +87,19 @@ date_default_timezone_set('Africa/Kampala'); // Or user's preferred timezone
             </div>
         </div>
     </nav>
+    <?php endif; ?>
 
     <div class="container main-content">
         <div class="about-header">
             <img src="images/logo.png" alt="School Logo" onerror="this.style.display='none';">
-            <h2>About This Report System</h2>
+            <h2>User Manual & System Information</h2>
             <p class="datetime-display">Current Date & Time: <?php echo date("D, d M Y H:i:s"); ?></p>
+        </div>
+
+        <div class="text-center mb-4">
+            <a href="download_user_manual.php" class="btn btn-primary btn-lg">
+                <i class="fas fa-download me-2"></i> Download User Manual (PDF)
+            </a>
         </div>
 
         <section id="school-contacts" style="text-align: center; margin-bottom: 2rem;">
@@ -293,9 +301,11 @@ date_default_timezone_set('Africa/Kampala'); // Or user's preferred timezone
 
     </div>
 
+    <?php if (!defined('GENERATING_USER_MANUAL_PDF') || !GENERATING_USER_MANUAL_PDF): ?>
     <footer class="text-center mt-5 mb-3 p-3 non-printable" style="background-color: #f8f9fa;">
         <p>&copy; <?php echo date('Y'); ?> Maria Ow'embabazi Primary School - <i>Good Christian, Good Citizen</i></p>
     </footer>
+    <?php endif; ?>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>

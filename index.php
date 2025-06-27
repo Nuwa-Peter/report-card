@@ -266,7 +266,7 @@ try {
                 </ul>
             </li>
             <li>
-                <a href="about.php"><i class="fas fa-info-circle"></i> About & Help</a>
+                <a href="about.php"><i class="fas fa-book-reader"></i> User Manual</a> <!-- Changed icon and text -->
             </li>
             <!--
             <li>
