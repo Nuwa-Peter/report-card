@@ -114,8 +114,8 @@ try {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
         #sidebar {
-            min-width: 250px;
-            max-width: 250px;
+            min-width: 280px; /* Increased width */
+            max-width: 280px; /* Increased width */
             background: #007bff; /* Bootstrap primary blue */
             color: #fff;
             transition: all 0.3s;
@@ -124,7 +124,7 @@ try {
             overflow-y: auto;
         }
         #sidebar.active {
-            margin-left: -250px;
+            margin-left: -280px; /* Adjusted for increased width */
         }
         #sidebar .sidebar-header {
             padding: 20px;
@@ -165,11 +165,11 @@ try {
             background: #0062cc; /* Slightly darker blue for active */
         }
         #content {
-            width: calc(100% - 250px); /* Adjust based on sidebar width */
+            width: calc(100% - 280px); /* Adjust based on new sidebar width */
             padding: 20px;
             min-height: 100vh;
             transition: all 0.3s;
-            margin-left: 250px; /* Match sidebar width */
+            margin-left: 280px; /* Match new sidebar width */
             background-color: #e0f7fa; /* Ensure content background matches body */
         }
         #content.active {
@@ -182,7 +182,7 @@ try {
         }
         .datetime-display {
             font-size: 0.9em;
-            color: #555;
+            color: #dee2e6; /* Brighter color for date/time */
         }
         .main-content-card {
             background-color: #fff;
@@ -258,7 +258,7 @@ try {
                 <a href="#studentReportsSubmenu" data-bs-toggle="collapse" aria-expanded="false" class="dropdown-toggle"><i class="fas fa-user-graduate"></i> Student Analytics</a>
                 <ul class="collapse list-unstyled" id="studentReportsSubmenu">
                     <li>
-                        <a href="historical_performance.php"><i class="fas fa-history"></i> Historical Performance</a>
+                        <a href="historical_performance.php" style="white-space: nowrap;"><i class="fas fa-history"></i> Historical Performance</a>
                     </li>
                     <li>
                         <a href="comparative_analysis.php"><i class="fas fa-balance-scale"></i> Comparative Analysis</a>
@@ -334,10 +334,10 @@ try {
             </div>
         </nav>
 
-        <div class="container-fluid pt-3">
-            <h2>Dashboard</h2>
-            <div class="main-content-card" style="text-align: center;">
-                <p style="text-align: justify; display: inline-block; max-width: 800px;">Welcome to the Maria Ow'embabazi Primary School Report Card System Dashboard. Use the sidebar to navigate through the available options. You can generate new reports, view summaries, or download templates.</p>
+        <div class="container-fluid pt-3 text-center"> <!-- Centering container for h2 and card -->
+            <h2 class="mb-3">Dashboard</h2> <!-- Added margin-bottom to h2 -->
+            <div class="main-content-card d-inline-block" style="max-width: 800px; width: 100%;"> <!-- d-inline-block and max-width for centering block elements -->
+                <p style="text-align: justify;">Welcome to the Maria Ow'embabazi Primary School Report Card System Dashboard. Use the sidebar to navigate through the available options. You can generate new reports, view summaries, or download templates.</p>
                 <!-- More dashboard widgets/summaries can go here later -->
             </div>
 

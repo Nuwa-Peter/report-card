@@ -83,10 +83,7 @@ $subjectDisplayNames = [ /* As in summary_sheet.php - can be centralized later *
     <style>
         body { background-color: #f8f9fa; }
         .container.main-content { background-color: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-top: 20px; }
-        .table .table-dark th { /* More specific selector for the dark header */
-            background-color: #212529; /* Bootstrap's standard dark */
-            color: #ffffff !important; /* Ensure text is white */
-        }
+        /* .table .table-dark th rule removed as table-light is now used */
         .student-info-header { margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid #dee2e6;}
         .chart-container { max-height: 400px; margin-bottom: 2rem; }
     </style>
@@ -143,7 +140,7 @@ $subjectDisplayNames = [ /* As in summary_sheet.php - can be centralized later *
 
             <div class="table-responsive mb-4">
                 <table class="table table-striped table-hover table-bordered">
-                    <thead class="table-dark">
+                    <thead class="table-light"> <!-- Changed from table-dark to table-light -->
                         <tr>
                             <th>Academic Year</th>
                             <th>Term</th>
