@@ -444,25 +444,8 @@ try {
             const adminDismissNotificationsLink = document.getElementById('adminDismissNotificationsLink');
             let newestActivityTimestamp = null; // To store the timestamp of the newest fetched activity
 
-            // This value will be set by PHP if the user is a superadmin
-            let dbLastDismissedTimestamp = <?php
-                if (isset($_SESSION['role']) && $_SESSION['role'] === 'superadmin' && isset($_SESSION['user_id'])) {
-                    // This requires dal.php to be included before this script block if used here,
-                    // or fetch via AJAX. For simplicity, let's assume it's fetched and echoed by PHP.
-                    // Ensure dal.php is required before this point in index.php's main PHP block.
-                    // For this example, it's assumed getUserId() and getUserLastDismissedAdminActivityTimestamp() are available.
-                    // And $pdo is available.
-                    // This PHP block needs to be within the main PHP execution, not just inside JS.
-                    // Let's assume it's fetched earlier and available as a JS variable.
-                    // $initialDbDismissTimestamp = getUserLastDismissedAdminActivityTimestamp($pdo, $_SESSION['user_id']);
-                    // echo json_encode($initialDbDismissTimestamp);
-                    // Instead, we'll fetch it via a dedicated API endpoint for cleaner separation.
-                    // For now, initialize to null and fetch via API.
-                    echo "null";
-                } else {
-                    echo "null";
-                }
-            ?>;
+            // This value will be updated by fetchInitialDismissTimestamp
+            let dbLastDismissedTimestamp = null;
 
             async function fetchInitialDismissTimestamp() {
                 if (adminActivityBellLink && <?php echo (isset($_SESSION['role']) && $_SESSION['role'] === 'superadmin') ? 'true' : 'false'; ?>) {
@@ -532,12 +515,11 @@ try {
                             let newActivitiesCount = 0;
                             if (dbLastDismissedTimestamp) {
                                 activities.forEach(activity => {
-                                    // Ensure correct date comparison; server timestamps are likely UTC or server local.
-                                    // JS Date objects created from strings without timezone info can be tricky.
-                                    // Assuming server timestamp is 'YYYY-MM-DD HH:MM:SS' and treating as local to server.
-                                    // If it's UTC, new Date(activity.timestamp + 'Z') is better.
-                                    // For simplicity, direct comparison assuming consistent local interpretation or UTC.
-                                    if (new Date(activity.timestamp) > new Date(dbLastDismissedTimestamp)) {
+                                activities.forEach(activity => {
+                                    // Assuming server timestamps (activity.timestamp and dbLastDismissedTimestamp)
+                                    // are in 'YYYY-MM-DD HH:MM:SS' format and represent UTC.
+                                    // Append 'Z' to treat them as UTC for correct Date object creation.
+                                    if (new Date(activity.timestamp + 'Z') > new Date(dbLastDismissedTimestamp + 'Z')) {
                                         newActivitiesCount++;
                                     }
                                 });

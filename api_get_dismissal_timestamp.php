@@ -21,7 +21,7 @@ try {
     $timestamp = getUserLastDismissedAdminActivityTimestamp($pdo, $userId);
     echo json_encode(['success' => true, 'timestamp' => $timestamp]);
 } catch (Exception $e) {
-    error_log("API Error in api_get_dismissal_timestamp.php: " . $e.getMessage());
+    error_log("API Error in api_get_dismissal_timestamp.php: " . $e->getMessage());
     http_response_code(500); // Internal Server Error
     echo json_encode(['success' => false, 'error' => 'An internal error occurred while fetching dismissal timestamp.']);
 }
