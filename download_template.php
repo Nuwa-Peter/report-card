@@ -26,34 +26,42 @@ try {
     $worksheet->setTitle('Subject_Template');
 
     // --- Populate the single sheet ---
-    $subjectDisplayNameForCellA1 = 'SUBJECT NAME (e.g., ENGLISH)';
-    $worksheet->getCell('A1')->setValue($subjectDisplayNameForCellA1);
-    $worksheet->getStyle('A1')->getFont()->setBold(true)->setSize(12);
+    $worksheet->getCell('A1')->setValue('LIN');
+    $worksheet->getCell('B1')->setValue('Names/Name');
+    $worksheet->getCell('C1')->setValue('BOT');
+    $worksheet->getCell('D1')->setValue('MOT');
+    $worksheet->getCell('E1')->setValue('EOT');
+    $worksheet->getStyle('A1:E1')->getFont()->setBold(true);
 
-    $worksheet->getCell('B1')->setValue('BOT');
-    $worksheet->getCell('C1')->setValue('MOT');
-    $worksheet->getCell('D1')->setValue('EOT');
-    $worksheet->getStyle('B1:D1')->getFont()->setBold(true);
+    // Add subject name placeholder in a noticeable position, e.g., A2, merged or styled
+    $worksheet->mergeCells('A2:E2'); // Merge cells for the subject name instruction
+    $worksheet->getCell('A2')->setValue('SUBJECT NAME (e.g., ENGLISH) - Replace this row with your first student\'s data or delete if not needed.');
+    $worksheet->getStyle('A2')->getFont()->setBold(true)->setSize(12);
+    $worksheet->getStyle('A2')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
 
-    $exampleStudentNames = [
-        'STUDENT NAME 1 (ALL CAPS)',
-        'STUDENT NAME 2 (ALL CAPS)',
-        'STUDENT NAME 3 (ALL CAPS)'
+
+    $exampleStudentData = [
+        ['LIN_EXAMPLE_1', 'STUDENT NAME 1 (ALL CAPS)'], // LIN, Name
+        ['', 'STUDENT NAME 2 (ALL CAPS)'], // Empty LIN, Name
+        ['LIN_EXAMPLE_3', 'STUDENT NAME 3 (ALL CAPS)']  // LIN, Name
     ];
-    $row = 2; // Data starts from row 2
-    foreach ($exampleStudentNames as $name) {
-        $worksheet->getCell('A' . $row)->setValue($name);
+    $row = 3; // Data starts from row 3
+    foreach ($exampleStudentData as $student) {
+        $worksheet->getCell('A' . $row)->setValue($student[0]); // LIN
+        $worksheet->getCell('B' . $row)->setValue($student[1]); // Name
+        // BOT, MOT, EOT will be empty for the template
         $row++;
     }
 
-    $worksheet->getCell('E1')->setValue('NOTE: Enter student names in ALL CAPS. Replace "SUBJECT NAME" in A1 with actual subject.');
-    $worksheet->getStyle('E1')->getFont()->setBold(true)->getColor()->setARGB('FF808080');
+    $worksheet->getCell('F1')->setValue('NOTE: Enter student names in ALL CAPS. Ensure LIN is provided if available, otherwise leave blank. The row with "SUBJECT NAME" should be replaced or deleted.');
+    $worksheet->getStyle('F1')->getFont()->setBold(true)->getColor()->setARGB('FF808080');
 
-    $worksheet->getColumnDimension('A')->setWidth(35);
-    $worksheet->getColumnDimension('B')->setWidth(12);
-    $worksheet->getColumnDimension('C')->setWidth(12);
-    $worksheet->getColumnDimension('D')->setWidth(12);
-    $worksheet->getColumnDimension('E')->setWidth(60);
+    $worksheet->getColumnDimension('A')->setWidth(20); // LIN
+    $worksheet->getColumnDimension('B')->setWidth(35); // Names/Name
+    $worksheet->getColumnDimension('C')->setWidth(12); // BOT
+    $worksheet->getColumnDimension('D')->setWidth(12); // MOT
+    $worksheet->getColumnDimension('E')->setWidth(12); // EOT
+    $worksheet->getColumnDimension('F')->setWidth(70); // Note column
 
     $worksheet->getPageSetup()->setOrientation(PageSetup::ORIENTATION_PORTRAIT);
     $worksheet->getPageSetup()->setPaperSize(PageSetup::PAPERSIZE_A4);

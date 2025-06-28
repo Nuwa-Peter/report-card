@@ -151,7 +151,7 @@ try {
             }
 
             // 1. Add or find student
-            $new_student_id = upsertStudent($pdo, $student_name_new, $lin_no_new);
+            $new_student_id = upsertStudent($pdo, $student_name, $lin_no); // Corrected variables
 
             if (!$new_student_id) {
                 error_log("Failed to upsert new student: $student_name, LIN: $lin_no for batch $batch_id");
@@ -164,7 +164,7 @@ try {
                 $_SESSION['user_id'],
                 $_SESSION['username'],
                 'STUDENT_ADDED_TO_BATCH',
-                "Added new student '" . htmlspecialchars($student_name_new) . "' (ID: $new_student_id) to batch ID $batch_id.",
+                "Added new student '" . htmlspecialchars($student_name) . "' (ID: $new_student_id) to batch ID $batch_id.", // Corrected variable
                 'student',
                 $new_student_id,
                 null

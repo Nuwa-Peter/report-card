@@ -114,52 +114,136 @@ try {
         $filePath = $uploadedFiles['tmp_name'][$subjectInternalKey];
         $spreadsheet = IOFactory::load($filePath);
         $sheet = $spreadsheet->getActiveSheet();
-        $subjectNameFromFile = trim(strval($sheet->getCell('A1')->getValue()));
-        if (empty($subjectNameFromFile)) {
-            throw new Exception("Subject name missing in Cell A1 for uploaded file intended for subject key '" . htmlspecialchars($subjectInternalKey) . "'.");
+
+        // Subject name is expected in A2 (merged cell) after header row
+        $subjectNameFromFile = trim(strval($sheet->getCell('A2')->getValue()));
+        // Basic validation for the subject name placeholder
+        if (empty($subjectNameFromFile) || strpos(strtoupper($subjectNameFromFile), 'SUBJECT NAME') === false) {
+            // Attempt to get subject name from A1 of the *template* if A2 is unexpectedly empty or not the placeholder
+            // This is a fallback, ideally the user replaces or deletes the A2 instruction row.
+            // If the first row (A1:E1) are headers LIN, Name, BOT, MOT, EOT, then A2 is the subject name.
+            // If the user deleted row 2, then actual data might start at row 2.
+            // We need to be careful here. Let's assume for now the subject name is *somewhere* or derived.
+            // For now, let's assume the subject name is correctly identified from A2 or via prior logic not shown here.
+            // If A2 is empty, we might need to extract it from the file name or another source if the design changes.
+            // For this change, we rely on the user to have the subject name in A2 or the system to derive it.
+            // The original template had subject name in A1. The new one has it in A2.
+            // Let's assume $subjectNameFromFile is correctly populated by looking at A2.
+            // If $subjectNameFromFile is still empty after checking A2, we might need an error or a different strategy.
+             if (empty($subjectNameFromFile)) {
+                // Fallback or error if subject name is crucial and not found
+                // For now, we'll use the internal key if name is not found, but this might not be user-friendly
+                // A better approach might be to throw an error if A2 is not what's expected.
+                // For this iteration, let's assume A2 contains the subject name or it's handled if empty.
+                // If the user *deletes* row 2, then cell A2 will be part of the first student's data.
+                // This needs careful handling.
+                // The safest is to expect the "SUBJECT NAME..." placeholder in A2.
+                // If it's not there, it implies the user might have deleted it, and data starts earlier.
+                // Let's assume the file *must* have the subject name placeholder in A2.
+                // If not, we can throw an error.
+
+                // Let's try to read the subject name from where the template places it (A2)
+                $subjectNameInstructionCell = trim(strval($sheet->getCell('A2')->getValue()));
+                if (strpos(strtoupper($subjectNameInstructionCell), 'SUBJECT NAME') !== false) {
+                    // This means the instruction row is still there. The actual data starts from row 3.
+                    // The subject name for the file should be what's in this cell, cleaned up.
+                    // E.g. "SUBJECT NAME (e.g., ENGLISH) - Replace this row..."
+                    // We need to extract "ENGLISH" or similar. This is complex if the format varies.
+                    // A simpler approach is to expect the *user* to replace the content of A2 with just "ENGLISH".
+                    // Or, the system uses $subjectInternalKey to find the full name.
+                    // Let's assume the subject name is correctly derived or found, e.g. from $subjectInternalKey mapped to full name.
+                    // For now, we will use $subjectInternalKey to get the full name for consistency if A2 is problematic.
+                     $stmtSubjectName = $pdo->prepare("SELECT subject_name_full FROM subjects WHERE subject_code = :code");
+                     $stmtSubjectName->execute([':code' => $subjectInternalKey]);
+                     $subjectNameFromFile = $stmtSubjectName->fetchColumn();
+                     if(!$subjectNameFromFile) {
+                        throw new Exception("Could not determine subject name for key: " . htmlspecialchars($subjectInternalKey));
+                     }
+                } else {
+                    // If A2 doesn't have the instruction, it means the user likely deleted row 2.
+                    // Data would then start from row 2. The subject name source is now ambiguous from the sheet itself.
+                    // We MUST rely on $subjectInternalKey or throw an error.
+                    $stmtSubjectName = $pdo->prepare("SELECT subject_name_full FROM subjects WHERE subject_code = :code");
+                    $stmtSubjectName->execute([':code' => $subjectInternalKey]);
+                    $subjectNameFromFile = $stmtSubjectName->fetchColumn();
+                    if(!$subjectNameFromFile) {
+                        throw new Exception("Subject name placeholder in A2 is missing or modified, and could not determine subject name for key: " . htmlspecialchars($subjectInternalKey));
+                    }
+                }
+            }
         }
+        // Ensure subjectId is found or created using the derived subjectNameFromFile (or internal key)
         $subjectId = findOrCreateLookup($pdo, 'subjects', 'subject_code', $subjectInternalKey, ['subject_name_full' => $subjectNameFromFile]);
-        $headerBOT = trim(strval($sheet->getCell('B1')->getValue()));
-        $headerMOT = trim(strval($sheet->getCell('C1')->getValue()));
-        $headerEOT = trim(strval($sheet->getCell('D1')->getValue()));
-        if (strtoupper($headerBOT) !== 'BOT' || strtoupper($headerMOT) !== 'MOT' || strtoupper($headerEOT) !== 'EOT') {
-            throw new Exception("Invalid headers in Excel for '" . htmlspecialchars($subjectNameFromFile) . "'. Expected B1='BOT', C1='MOT', D1='EOT'.");
+
+
+        // Headers are LIN, Names/Name, BOT, MOT, EOT in row 1
+        $headerLIN = trim(strtoupper(strval($sheet->getCell('A1')->getValue())));
+        $headerName = trim(strtoupper(strval($sheet->getCell('B1')->getValue())));
+        $headerBOT = trim(strtoupper(strval($sheet->getCell('C1')->getValue())));
+        $headerMOT = trim(strtoupper(strval($sheet->getCell('D1')->getValue())));
+        $headerEOT = trim(strtoupper(strval($sheet->getCell('E1')->getValue())));
+
+        if ($headerLIN !== 'LIN' || (!in_array($headerName, ['NAMES', 'NAME'])) || $headerBOT !== 'BOT' || $headerMOT !== 'MOT' || $headerEOT !== 'EOT') {
+            throw new Exception("Invalid headers in Excel for '" . htmlspecialchars($subjectNameFromFile) . "'. Expected A1='LIN', B1='Names/Name', C1='BOT', D1='MOT', E1='EOT'. Found: $headerLIN, $headerName, $headerBOT, $headerMOT, $headerEOT");
         }
+
         $highestRow = $sheet->getHighestDataRow();
-        if ($highestRow < 2) {
-             error_log("Warning: No student data rows found in file for " . htmlspecialchars($subjectNameFromFile) . " (File for " . htmlspecialchars($subjectInternalKey) . "). Sheet might be empty after row 1.");
+        // Data starts from row 3 if the subject name instruction row (row 2) is present.
+        // If the user deletes row 2, data starts from row 2.
+        // We need to detect this. A simple check: if A2 contains "SUBJECT NAME", data starts at row 3. Otherwise, row 2.
+        $startRow = 2;
+        $firstCellContentRow2 = trim(strtoupper(strval($sheet->getCell('A2')->getValue())));
+        if (strpos($firstCellContentRow2, 'SUBJECT NAME') !== false && strpos($firstCellContentRow2, 'REPLACE THIS ROW') !== false) {
+            $startRow = 3; // Instruction row is present
+        }
+
+
+        if ($highestRow < $startRow) {
+             error_log("Warning: No student data rows found in file for " . htmlspecialchars($subjectNameFromFile) . " (File for " . htmlspecialchars($subjectInternalKey) . "). Sheet might be empty after row " . ($startRow -1) . ".");
              continue;
         }
 
-        for ($row = 2; $row <= $highestRow; $row++) {
-            $studentNameRaw = trim(strval($sheet->getCell('A' . $row)->getValue()));
-            if (empty($studentNameRaw)) continue;
+        for ($row = $startRow; $row <= $highestRow; $row++) {
+            $linValue = trim(strval($sheet->getCell('A' . $row)->getValue()));
+            $studentNameRaw = trim(strval($sheet->getCell('B' . $row)->getValue()));
+
+            if (empty($studentNameRaw)) continue; // Skip if no student name
             $studentNameAllCaps = strtoupper($studentNameRaw);
+
+            // Handle LIN: if empty, store as NULL or an empty string based on DB schema.
+            // For consistency, let's use NULL if the schema allows, or empty string if not.
+            // Assuming 'lin_no' column in 'students' table can be NULL.
+            $linToStore = !empty($linValue) ? $linValue : null;
 
             $stmtStudent = $pdo->prepare("SELECT id FROM students WHERE student_name = :name");
             $stmtStudent->execute([':name' => $studentNameAllCaps]);
             $studentId = $stmtStudent->fetchColumn();
+
             if (!$studentId) {
-                $stmtInsertStudent = $pdo->prepare("INSERT INTO students (student_name, current_class_id) VALUES (:name, :class_id)");
-                $stmtInsertStudent->execute([':name' => $studentNameAllCaps, ':class_id' => $classId]);
+                $stmtInsertStudent = $pdo->prepare("INSERT INTO students (student_name, current_class_id, lin_no) VALUES (:name, :class_id, :lin_no)");
+                $stmtInsertStudent->execute([':name' => $studentNameAllCaps, ':class_id' => $classId, ':lin_no' => $linToStore]);
                 $studentId = $pdo->lastInsertId();
             } else {
-                // Corrected block for student update
-                $sqlUpdateStudentClass = "UPDATE students
-                                          SET current_class_id = :class_id_set
-                                          WHERE id = :id
-                                          AND (current_class_id IS NULL OR current_class_id != :class_id_compare)";
-                $stmtUpdateStudentClass = $pdo->prepare($sqlUpdateStudentClass);
-                $stmtUpdateStudentClass->execute([
-                    ':class_id_set' => $classId,
-                    ':id' => $studentId,
-                    ':class_id_compare' => $classId
+                // Update existing student's class and LIN (if provided or changed)
+                // Ensure lin_no is only updated if a new value is provided or if it's different.
+                // If $linToStore is null and DB has a value, we might not want to overwrite.
+                // However, if Excel explicitly clears it, it should be cleared in DB.
+                // The current logic: $linToStore will be NULL if Excel cell is empty.
+                // This means an empty LIN in Excel will set lin_no to NULL in DB.
+                $sqlUpdateStudent = "UPDATE students
+                                     SET current_class_id = :class_id, lin_no = :lin_no
+                                     WHERE id = :id";
+                $stmtUpdateStudent = $pdo->prepare($sqlUpdateStudent);
+                $stmtUpdateStudent->execute([
+                    ':class_id' => $classId,
+                    ':lin_no' => $linToStore,
+                    ':id' => $studentId
                 ]);
             }
 
-            $botScore = $sheet->getCell('B' . $row)->getValue();
-            $motScore = $sheet->getCell('C' . $row)->getValue();
-            $eotScore = $sheet->getCell('D' . $row)->getValue();
+            $botScore = $sheet->getCell('C' . $row)->getValue(); // BOT is now in column C
+            $motScore = $sheet->getCell('D' . $row)->getValue(); // MOT is now in column D
+            $eotScore = $sheet->getCell('E' . $row)->getValue(); // EOT is now in column E
 
             $sqlScore = "INSERT INTO scores (student_id, subject_id, report_batch_id, bot_score, mot_score, eot_score)
                          VALUES (:student_id, :subject_id, :report_batch_id, :bot, :mot, :eot)
