@@ -115,92 +115,46 @@ try {
         $spreadsheet = IOFactory::load($filePath);
         $sheet = $spreadsheet->getActiveSheet();
 
-        // Subject name is expected in A2 (merged cell) after header row
-        $subjectNameFromFile = trim(strval($sheet->getCell('A2')->getValue()));
-        // Basic validation for the subject name placeholder
-        if (empty($subjectNameFromFile) || strpos(strtoupper($subjectNameFromFile), 'SUBJECT NAME') === false) {
-            // Attempt to get subject name from A1 of the *template* if A2 is unexpectedly empty or not the placeholder
-            // This is a fallback, ideally the user replaces or deletes the A2 instruction row.
-            // If the first row (A1:E1) are headers LIN, Name, BOT, MOT, EOT, then A2 is the subject name.
-            // If the user deleted row 2, then actual data might start at row 2.
-            // We need to be careful here. Let's assume for now the subject name is *somewhere* or derived.
-            // For now, let's assume the subject name is correctly identified from A2 or via prior logic not shown here.
-            // If A2 is empty, we might need to extract it from the file name or another source if the design changes.
-            // For this change, we rely on the user to have the subject name in A2 or the system to derive it.
-            // The original template had subject name in A1. The new one has it in A2.
-            // Let's assume $subjectNameFromFile is correctly populated by looking at A2.
-            // If $subjectNameFromFile is still empty after checking A2, we might need an error or a different strategy.
-             if (empty($subjectNameFromFile)) {
-                // Fallback or error if subject name is crucial and not found
-                // For now, we'll use the internal key if name is not found, but this might not be user-friendly
-                // A better approach might be to throw an error if A2 is not what's expected.
-                // For this iteration, let's assume A2 contains the subject name or it's handled if empty.
-                // If the user *deletes* row 2, then cell A2 will be part of the first student's data.
-                // This needs careful handling.
-                // The safest is to expect the "SUBJECT NAME..." placeholder in A2.
-                // If it's not there, it implies the user might have deleted it, and data starts earlier.
-                // Let's assume the file *must* have the subject name placeholder in A2.
-                // If not, we can throw an error.
+        // Subject name is no longer read from the Excel sheet.
+        // It's derived from $subjectInternalKey (from the form upload context).
+        $stmtSubjectName = $pdo->prepare("SELECT subject_name_full FROM subjects WHERE subject_code = :code");
+        $stmtSubjectName->execute([':code' => $subjectInternalKey]);
+        $subjectNameForFile = $stmtSubjectName->fetchColumn();
 
-                // Let's try to read the subject name from where the template places it (A2)
-                $subjectNameInstructionCell = trim(strval($sheet->getCell('A2')->getValue()));
-                if (strpos(strtoupper($subjectNameInstructionCell), 'SUBJECT NAME') !== false) {
-                    // This means the instruction row is still there. The actual data starts from row 3.
-                    // The subject name for the file should be what's in this cell, cleaned up.
-                    // E.g. "SUBJECT NAME (e.g., ENGLISH) - Replace this row..."
-                    // We need to extract "ENGLISH" or similar. This is complex if the format varies.
-                    // A simpler approach is to expect the *user* to replace the content of A2 with just "ENGLISH".
-                    // Or, the system uses $subjectInternalKey to find the full name.
-                    // Let's assume the subject name is correctly derived or found, e.g. from $subjectInternalKey mapped to full name.
-                    // For now, we will use $subjectInternalKey to get the full name for consistency if A2 is problematic.
-                     $stmtSubjectName = $pdo->prepare("SELECT subject_name_full FROM subjects WHERE subject_code = :code");
-                     $stmtSubjectName->execute([':code' => $subjectInternalKey]);
-                     $subjectNameFromFile = $stmtSubjectName->fetchColumn();
-                     if(!$subjectNameFromFile) {
-                        throw new Exception("Could not determine subject name for key: " . htmlspecialchars($subjectInternalKey));
-                     }
-                } else {
-                    // If A2 doesn't have the instruction, it means the user likely deleted row 2.
-                    // Data would then start from row 2. The subject name source is now ambiguous from the sheet itself.
-                    // We MUST rely on $subjectInternalKey or throw an error.
-                    $stmtSubjectName = $pdo->prepare("SELECT subject_name_full FROM subjects WHERE subject_code = :code");
-                    $stmtSubjectName->execute([':code' => $subjectInternalKey]);
-                    $subjectNameFromFile = $stmtSubjectName->fetchColumn();
-                    if(!$subjectNameFromFile) {
-                        throw new Exception("Subject name placeholder in A2 is missing or modified, and could not determine subject name for key: " . htmlspecialchars($subjectInternalKey));
-                    }
-                }
-            }
+        if (!$subjectNameForFile) {
+            // If subject_name_full is not found in DB, construct a fallback name or throw error.
+            // Using subject_code as fallback might be acceptable if subject_name_full is optional in DB.
+            $subjectNameForFile = ucfirst(str_replace('_', ' ', $subjectInternalKey)); // Fallback name
+            // Optionally, throw an exception if a full name is strictly required:
+            // throw new Exception("Could not determine full subject name for internal key: " . htmlspecialchars($subjectInternalKey));
         }
-        // Ensure subjectId is found or created using the derived subjectNameFromFile (or internal key)
-        $subjectId = findOrCreateLookup($pdo, 'subjects', 'subject_code', $subjectInternalKey, ['subject_name_full' => $subjectNameFromFile]);
 
+        // Ensure subjectId is found or created.
+        // The 'subject_name_full' passed to findOrCreateLookup will be the one derived from DB or the fallback.
+        $subjectId = findOrCreateLookup($pdo, 'subjects', 'subject_code', $subjectInternalKey, ['subject_name_full' => $subjectNameForFile]);
+        if (!$subjectId) {
+            throw new Exception("Failed to find or create subject ID for: " . htmlspecialchars($subjectNameForFile));
+        }
 
         // Headers are LIN, Names/Name, BOT, MOT, EOT in row 1
         $headerLIN = trim(strtoupper(strval($sheet->getCell('A1')->getValue())));
-        $headerName = trim(strtoupper(strval($sheet->getCell('B1')->getValue())));
+        $headerName = trim(strtoupper(strval($sheet->getCell('B1')->getValue()))); // Handles "Names" or "Name"
         $headerBOT = trim(strtoupper(strval($sheet->getCell('C1')->getValue())));
         $headerMOT = trim(strtoupper(strval($sheet->getCell('D1')->getValue())));
         $headerEOT = trim(strtoupper(strval($sheet->getCell('E1')->getValue())));
 
-        if ($headerLIN !== 'LIN' || (!in_array($headerName, ['NAMES', 'NAME'])) || $headerBOT !== 'BOT' || $headerMOT !== 'MOT' || $headerEOT !== 'EOT') {
-            throw new Exception("Invalid headers in Excel for '" . htmlspecialchars($subjectNameFromFile) . "'. Expected A1='LIN', B1='Names/Name', C1='BOT', D1='MOT', E1='EOT'. Found: $headerLIN, $headerName, $headerBOT, $headerMOT, $headerEOT");
+        // Validate headers
+        if ($headerLIN !== 'LIN' || !in_array($headerName, ['NAMES', 'NAME']) || $headerBOT !== 'BOT' || $headerMOT !== 'MOT' || $headerEOT !== 'EOT') {
+            throw new Exception("Invalid headers in Excel file for subject '" . htmlspecialchars($subjectNameForFile) . "'. Expected A1='LIN', B1='Names/Name', C1='BOT', D1='MOT', E1='EOT'. Found: $headerLIN, $headerName, $headerBOT, $headerMOT, $headerEOT");
         }
 
         $highestRow = $sheet->getHighestDataRow();
-        // Data starts from row 3 if the subject name instruction row (row 2) is present.
-        // If the user deletes row 2, data starts from row 2.
-        // We need to detect this. A simple check: if A2 contains "SUBJECT NAME", data starts at row 3. Otherwise, row 2.
+        // Data now always starts from row 2, as the instructional row 2 has been removed from the template.
         $startRow = 2;
-        $firstCellContentRow2 = trim(strtoupper(strval($sheet->getCell('A2')->getValue())));
-        if (strpos($firstCellContentRow2, 'SUBJECT NAME') !== false && strpos($firstCellContentRow2, 'REPLACE THIS ROW') !== false) {
-            $startRow = 3; // Instruction row is present
-        }
 
-
-        if ($highestRow < $startRow) {
-             error_log("Warning: No student data rows found in file for " . htmlspecialchars($subjectNameFromFile) . " (File for " . htmlspecialchars($subjectInternalKey) . "). Sheet might be empty after row " . ($startRow -1) . ".");
-             continue;
+        if ($highestRow < $startRow) { // Check if there's any data after the header row
+             error_log("Warning: No student data rows found in file for " . htmlspecialchars($subjectNameForFile) . " (File for " . htmlspecialchars($subjectInternalKey) . "). Sheet might be empty after row 1.");
+             continue; // Skip this file if no data rows
         }
 
         for ($row = $startRow; $row <= $highestRow; $row++) {

@@ -444,6 +444,43 @@ try {
             const adminDismissNotificationsLink = document.getElementById('adminDismissNotificationsLink');
             let newestActivityTimestamp = null; // To store the timestamp of the newest fetched activity
 
+            // This value will be set by PHP if the user is a superadmin
+            let dbLastDismissedTimestamp = <?php
+                if (isset($_SESSION['role']) && $_SESSION['role'] === 'superadmin' && isset($_SESSION['user_id'])) {
+                    // This requires dal.php to be included before this script block if used here,
+                    // or fetch via AJAX. For simplicity, let's assume it's fetched and echoed by PHP.
+                    // Ensure dal.php is required before this point in index.php's main PHP block.
+                    // For this example, it's assumed getUserId() and getUserLastDismissedAdminActivityTimestamp() are available.
+                    // And $pdo is available.
+                    // This PHP block needs to be within the main PHP execution, not just inside JS.
+                    // Let's assume it's fetched earlier and available as a JS variable.
+                    // $initialDbDismissTimestamp = getUserLastDismissedAdminActivityTimestamp($pdo, $_SESSION['user_id']);
+                    // echo json_encode($initialDbDismissTimestamp);
+                    // Instead, we'll fetch it via a dedicated API endpoint for cleaner separation.
+                    // For now, initialize to null and fetch via API.
+                    echo "null";
+                } else {
+                    echo "null";
+                }
+            ?>;
+
+            async function fetchInitialDismissTimestamp() {
+                if (adminActivityBellLink && <?php echo (isset($_SESSION['role']) && $_SESSION['role'] === 'superadmin') ? 'true' : 'false'; ?>) {
+                    try {
+                        const response = await fetch('api_get_dismissal_timestamp.php'); // New API endpoint needed
+                        if (!response.ok) throw new Error('Failed to fetch dismissal timestamp');
+                        const data = await response.json();
+                        if (data.success && data.timestamp) {
+                            dbLastDismissedTimestamp = data.timestamp;
+                        }
+                    } catch (error) {
+                        console.error('Error fetching initial dismissal timestamp:', error);
+                        // Keep dbLastDismissedTimestamp as null, so all activities might appear new initially
+                    }
+                }
+            }
+
+
             function formatRelativeTime(timestamp) {
                 const now = new Date();
                 const past = new Date(timestamp.replace(' ', 'T') + 'Z'); // Assume UTC, ensure ISO format for parsing
@@ -491,19 +528,22 @@ try {
                                 adminActivityDropdownBody.appendChild(itemDiv);
                             });
 
-                            // Simple badge logic: show a count of new items (up to a limit, e.g., 9+)
-                            // For a true "unread" count, the API and DB would need more logic (e.g., last_viewed_timestamp by admin)
-                            // Badge Logic: Only count activities newer than the last dismissal
-                            const lastDismissedTimestamp = localStorage.getItem('adminLastDismissedActivityTimestamp');
+                            // Badge Logic: Count activities newer than the dbLastDismissedTimestamp
                             let newActivitiesCount = 0;
-                            if (lastDismissedTimestamp) {
+                            if (dbLastDismissedTimestamp) {
                                 activities.forEach(activity => {
-                                    if (new Date(activity.timestamp.replace(' ', 'T') + 'Z') > new Date(lastDismissedTimestamp)) {
+                                    // Ensure correct date comparison; server timestamps are likely UTC or server local.
+                                    // JS Date objects created from strings without timezone info can be tricky.
+                                    // Assuming server timestamp is 'YYYY-MM-DD HH:MM:SS' and treating as local to server.
+                                    // If it's UTC, new Date(activity.timestamp + 'Z') is better.
+                                    // For simplicity, direct comparison assuming consistent local interpretation or UTC.
+                                    if (new Date(activity.timestamp) > new Date(dbLastDismissedTimestamp)) {
                                         newActivitiesCount++;
                                     }
                                 });
                             } else {
-                                newActivitiesCount = activities.length; // All are new if never dismissed
+                                // If no dismiss timestamp from DB, all fetched activities are considered new
+                                newActivitiesCount = activities.length;
                             }
 
                             if (adminActivityBadge) {
@@ -535,26 +575,59 @@ try {
                 fetchAdminActivityFeed();
 
                 var activityDropdownInstance = new bootstrap.Dropdown(adminActivityBellLink);
-                adminActivityBellLink.addEventListener('show.bs.dropdown', function () {
-                    fetchAdminActivityFeed();
+
+                adminActivityBellLink.addEventListener('show.bs.dropdown', async function () {
+                    // Fetch initial dismiss timestamp if not already fetched or if needed again
+                    if (dbLastDismissedTimestamp === null) { // Check if it needs fetching
+                        await fetchInitialDismissTimestamp();
+                    }
+                    fetchAdminActivityFeed(); // This will now use the potentially updated dbLastDismissedTimestamp
                 });
 
                 if (adminDismissNotificationsLink) {
                     adminDismissNotificationsLink.addEventListener('click', function(e) {
                         e.preventDefault();
-                        if (adminActivityBadge) {
-                            adminActivityBadge.style.display = 'none';
-                            adminActivityBadge.textContent = '0';
-                        }
-                        // Store the timestamp of the newest activity that was visible *before* clearing,
-                        // or current time if no activities were there/fetched.
+
                         const timestampToStore = newestActivityTimestamp || new Date().toISOString().slice(0, 19).replace('T', ' ');
-                        localStorage.setItem('adminLastDismissedActivityTimestamp', timestampToStore);
+
+                        // Update in DB
+                        fetch('api_update_dismissal_timestamp.php', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                            },
+                            body: 'timestamp=' + encodeURIComponent(timestampToStore)
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                dbLastDismissedTimestamp = timestampToStore; // Update local JS variable
+                                if (adminActivityBadge) {
+                                    adminActivityBadge.style.display = 'none';
+                                    adminActivityBadge.textContent = '0';
+                                }
+                                console.log('Dismissal timestamp updated in DB.');
+                            } else {
+                                console.error('Failed to update dismissal timestamp in DB:', data.error);
+                                // Optionally inform user of failure
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error updating dismissal timestamp:', error);
+                        });
 
                         // Close the dropdown
                         activityDropdownInstance.hide();
                     });
                 }
+
+                // Initial fetch of dismissal timestamp when page loads for superadmin
+                fetchInitialDismissTimestamp().then(() => {
+                    fetchAdminActivityFeed(); // Initial feed fetch after getting dismiss timestamp
+                });
+
+            } else { // Not a superadmin or element not found
+                 if (adminActivityBellLink) adminActivityBellLink.style.display = 'none'; // Hide bell if not superadmin
             }
         });
     </script>

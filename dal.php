@@ -261,6 +261,47 @@ function saveStudentReportSummary(PDO $pdo, array $summaryData): bool {
 }
 
 /**
+ * Updates the last dismissed admin activity timestamp for a user.
+ *
+ * @param PDO $pdo The PDO database connection object.
+ * @param int $userId The ID of the user.
+ * @param string $timestamp The timestamp to set.
+ * @return bool True on success, false on failure.
+ */
+function updateUserLastDismissedAdminActivityTimestamp(PDO $pdo, int $userId, string $timestamp): bool {
+    // Assuming 'users' table has a column 'last_dismissed_admin_activity_ts DATETIME NULL'
+    $sql = "UPDATE users SET last_dismissed_admin_activity_ts = :timestamp WHERE id = :user_id";
+    try {
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([':timestamp' => $timestamp, ':user_id' => $userId]);
+        return true; // Or $stmt->rowCount() > 0 if you want to confirm a change happened
+    } catch (PDOException $e) {
+        error_log("DAL Error: updateUserLastDismissedAdminActivityTimestamp failed for User ID $userId. Error: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Fetches the last dismissed admin activity timestamp for a user.
+ *
+ * @param PDO $pdo The PDO database connection object.
+ * @param int $userId The ID of the user.
+ * @return string|null The timestamp string or null if not set/error.
+ */
+function getUserLastDismissedAdminActivityTimestamp(PDO $pdo, int $userId): ?string {
+    $sql = "SELECT last_dismissed_admin_activity_ts FROM users WHERE id = :user_id";
+    try {
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([':user_id' => $userId]);
+        $result = $stmt->fetchColumn();
+        return $result ?: null; // Return null if false (not found) or null
+    } catch (PDOException $e) {
+        error_log("DAL Error: getUserLastDismissedAdminActivityTimestamp failed for User ID $userId. Error: " . $e->getMessage());
+        return null;
+    }
+}
+
+/**
  * Fetches teacher initials for specific subjects for a given report batch.
  * This is a placeholder, as teacher initials are currently passed from the form via session.
  * If initials were stored per subject per batch in DB, this function would fetch them.

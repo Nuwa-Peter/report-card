@@ -33,19 +33,14 @@ try {
     $worksheet->getCell('E1')->setValue('EOT');
     $worksheet->getStyle('A1:E1')->getFont()->setBold(true);
 
-    // Add subject name placeholder in a noticeable position, e.g., A2, merged or styled
-    $worksheet->mergeCells('A2:E2'); // Merge cells for the subject name instruction
-    $worksheet->getCell('A2')->setValue('SUBJECT NAME (e.g., ENGLISH) - Replace this row with your first student\'s data or delete if not needed.');
-    $worksheet->getStyle('A2')->getFont()->setBold(true)->setSize(12);
-    $worksheet->getStyle('A2')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
-
-
+    // Instructional row A2 is removed. Data starts from row 2.
+    // Example student data will now start from row 2.
     $exampleStudentData = [
         ['LIN_EXAMPLE_1', 'STUDENT NAME 1 (ALL CAPS)'], // LIN, Name
         ['', 'STUDENT NAME 2 (ALL CAPS)'], // Empty LIN, Name
         ['LIN_EXAMPLE_3', 'STUDENT NAME 3 (ALL CAPS)']  // LIN, Name
     ];
-    $row = 3; // Data starts from row 3
+    $row = 2; // Data starts from row 2
     foreach ($exampleStudentData as $student) {
         $worksheet->getCell('A' . $row)->setValue($student[0]); // LIN
         $worksheet->getCell('B' . $row)->setValue($student[1]); // Name
@@ -53,7 +48,12 @@ try {
         $row++;
     }
 
-    $worksheet->getCell('F1')->setValue('NOTE: Enter student names in ALL CAPS. Ensure LIN is provided if available, otherwise leave blank. The row with "SUBJECT NAME" should be replaced or deleted.');
+    // Update the note: Subject name is no longer taken from the sheet.
+    // The system will use the subject context from the upload form.
+    // Sheet title can be set to 'SUBJECT_NAME_HERE' as a hint.
+    $worksheet->setTitle('SUBJECT_NAME_HERE'); // User can rename this sheet if they want.
+
+    $worksheet->getCell('F1')->setValue('NOTE: Enter student names in ALL CAPS. Ensure LIN is provided if available, otherwise leave blank. Data starts from Row 2. The subject for this sheet is determined by the option selected during upload.');
     $worksheet->getStyle('F1')->getFont()->setBold(true)->getColor()->setARGB('FF808080');
 
     $worksheet->getColumnDimension('A')->setWidth(20); // LIN
@@ -61,7 +61,7 @@ try {
     $worksheet->getColumnDimension('C')->setWidth(12); // BOT
     $worksheet->getColumnDimension('D')->setWidth(12); // MOT
     $worksheet->getColumnDimension('E')->setWidth(12); // EOT
-    $worksheet->getColumnDimension('F')->setWidth(70); // Note column
+    $worksheet->getColumnDimension('F')->setWidth(80); // Adjusted width for longer note
 
     $worksheet->getPageSetup()->setOrientation(PageSetup::ORIENTATION_PORTRAIT);
     $worksheet->getPageSetup()->setPaperSize(PageSetup::PAPERSIZE_A4);
