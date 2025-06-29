@@ -30,12 +30,14 @@ if (!$batch_id) {
 
 $hasErrors = false;
 $changesMade = 0;
+$studentDataProcessed = false; // Flag to indicate if any student data was in the POST
 
 try {
     $pdo->beginTransaction();
 
     // Process existing students
-    if (isset($_POST['students']) && is_array($_POST['students'])) {
+    if (isset($_POST['students']) && is_array($_POST['students']) && !empty($_POST['students'])) {
+        $studentDataProcessed = true; // Mark that we are processing student data
         foreach ($_POST['students'] as $student_id_key => $studentData) {
             $student_id = filter_var($studentData['id'], FILTER_VALIDATE_INT);
             $student_name = trim(filter_var($studentData['name'], FILTER_SANITIZE_STRING));
@@ -139,7 +141,8 @@ try {
     }
 
     // Process new students
-    if (isset($_POST['new_student']) && is_array($_POST['new_student'])) {
+    if (isset($_POST['new_student']) && is_array($_POST['new_student']) && !empty($_POST['new_student'])) {
+        $studentDataProcessed = true; // Mark that we are processing student data
         foreach ($_POST['new_student'] as $newStudentData) {
             $student_name = trim(filter_var($newStudentData['name'], FILTER_SANITIZE_STRING));
             $lin_no = trim(filter_var($newStudentData['lin_no'], FILTER_SANITIZE_STRING));
@@ -209,15 +212,33 @@ try {
 
     $pdo->commit();
 
+    // Set the flag if any student data was processed and there were no overriding errors during commit.
+    // $changesMade can still be used for a more nuanced success message.
+    if ($studentDataProcessed && !$hasErrors) { // If we attempted to process any student data and no major error stopped us
+        $_SESSION['batch_data_changed_for_calc'][$batch_id] = true;
+    }
+
     if ($changesMade > 0) {
-        $_SESSION['batch_data_changed_for_calc'][$batch_id] = true; // Set flag
-        $_SESSION['success_message'] = "Marks updated successfully. Made $changesMade change(s). <strong>IMPORTANT: Please re-run calculations for this batch to update summaries and report cards.</strong> <a href='run_calculations.php?batch_id=$batch_id' class='btn btn-warning btn-sm'>Re-calculate Now</a>";
-    } else if ($hasErrors) {
-        $_SESSION['error_message'] = "Some errors occurred during the update. Please check the data and try again.";
+        // The flag is already set if $studentDataProcessed was true.
+        // The success message itself will prompt recalculation.
+        $_SESSION['success_message'] = "Data updated successfully. Made $changesMade change(s).";
+    } else if ($hasErrors) { // If $hasErrors is true, it means a significant issue occurred (e.g., failed to upsert new student)
+        $_SESSION['error_message'] = "Some errors occurred during the update. Please check the data and try again. Recalculation might be needed if some changes went through partially.";
+        // If errors occurred, it's safer to assume calculations are needed if any data might have been touched.
+        if ($studentDataProcessed) { // Even with errors, if we started processing, flag for recalculation.
+            $_SESSION['batch_data_changed_for_calc'][$batch_id] = true;
+        }
+    } else if ($studentDataProcessed && $changesMade == 0) { // Data was processed, but no actual changes were made to DB (e.g. submitted identical data)
+         $_SESSION['info_message'] = "No effective changes were made to the data.";
+         // In this specific case (data submitted was identical to DB), we might not need to force recalc.
+         // However, the current logic of upsertScore returning rowCount > 0 for $changesMade handles this.
+         // If $changesMade is 0, it implies no actual DB rows were affected.
+         // For simplicity, if studentDataProcessed is true and no errors, we set the flag.
+         // The user can decide if they want to recalculate. The warning will show.
+    } else if (!$studentDataProcessed) { // No student data in POST
+        $_SESSION['info_message'] = "No student data was submitted for update.";
     }
-    else {
-        $_SESSION['info_message'] = "No changes were detected or made.";
-    }
+
 
 } catch (PDOException $e) {
     if ($pdo->inTransaction()) {
