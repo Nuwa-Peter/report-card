@@ -87,7 +87,9 @@ date_default_timezone_set('Africa/Kampala');
             letter-spacing: -0.5px;
         }
          section#school-contacts .section-title,
-         section#new-features-docs .section-title {
+         section#new-features-docs .section-title,
+         section#help-guide .section-title,
+         section#troubleshooting .section-title {
             text-align: center;
         }
 
@@ -183,7 +185,7 @@ date_default_timezone_set('Africa/Kampala');
             <p class="datetime-display">Current Date & Time: <?php echo date("D, d M Y H:i:s"); ?></p>
         </div>
 
-        <div class="text-center mb-5"> {/* Increased margin-bottom */}
+        <div class="text-center mb-5">
             <a href="download_user_manual.php" class="btn btn-danger btn-lg">
                 <i class="fas fa-file-pdf me-2"></i> Download User Manual (PDF)
             </a>

@@ -226,6 +226,7 @@ try {
 
     $pdo->commit();
     $_SESSION['success_message'] = "Calculations, summaries, and remarks generated and saved successfully for Batch ID: " . htmlspecialchars($batch_id);
+    unset($_SESSION['batch_data_changed_for_calc'][$batch_id]); // Clear the flag
 
     // Log successful calculation
     $logDescriptionCalc = "Re-calculated summaries and remarks for batch '" . htmlspecialchars($batchSettings['class_name'] . " " . $batchSettings['term_name'] . " " . $batchSettings['year_name']) . "' (ID: " . $batch_id . ").";

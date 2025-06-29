@@ -210,6 +210,7 @@ try {
     $pdo->commit();
 
     if ($changesMade > 0) {
+        $_SESSION['batch_data_changed_for_calc'][$batch_id] = true; // Set flag
         $_SESSION['success_message'] = "Marks updated successfully. Made $changesMade change(s). <strong>IMPORTANT: Please re-run calculations for this batch to update summaries and report cards.</strong> <a href='run_calculations.php?batch_id=$batch_id' class='btn btn-warning btn-sm'>Re-calculate Now</a>";
     } else if ($hasErrors) {
         $_SESSION['error_message'] = "Some errors occurred during the update. Please check the data and try again.";

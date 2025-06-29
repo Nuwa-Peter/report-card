@@ -280,6 +280,7 @@ try {
     $_SESSION['success_message'] = 'Data imported successfully from the Excel file for class ' . htmlspecialchars($selectedClassValue) . ' (Batch ID: ' . htmlspecialchars($reportBatchId) . '). Ready for next steps (calculations).';
     $_SESSION['current_teacher_initials'] = $teacherInitialsFromForm;
     $_SESSION['last_processed_batch_id'] = $reportBatchId;
+    $_SESSION['batch_data_changed_for_calc'][$reportBatchId] = true; // Set flag for this batch
 
     // Log successful import
     if (!function_exists('logActivity')) { // Ensure dal.php was required if not already

@@ -634,7 +634,16 @@ function logActivity(
  * @return array An array of activity log records.
  */
 function getRecentActivities(PDO $pdo, int $limit = 15): array {
-    $sql = "SELECT id, username, action_type, description, timestamp, entity_type, entity_id
+    // Assuming DB server is UTC. Convert to Africa/Kampala for display.
+    // The format '%d/%m/%Y %H:%i:%s' is what the JS `parseEatTimestampToDateObject` expects.
+    $sql = "SELECT
+                id,
+                username,
+                action_type,
+                description,
+                DATE_FORMAT(CONVERT_TZ(timestamp, 'UTC', 'Africa/Kampala'), '%d/%m/%Y %H:%i:%s') AS timestamp,
+                entity_type,
+                entity_id
             FROM activity_log
             ORDER BY timestamp DESC
             LIMIT :limit_val";
@@ -643,7 +652,16 @@ function getRecentActivities(PDO $pdo, int $limit = 15): array {
         $stmt = $pdo->prepare($sql);
         $stmt->bindValue(':limit_val', $limit, PDO::PARAM_INT);
         $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $activities = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        // Ensure timestamp is always a string, even if CONVERT_TZ or DATE_FORMAT returns NULL
+        // (e.g. if original timestamp in DB was NULL or invalid)
+        foreach ($activities as &$activity) {
+            if (!isset($activity['timestamp'])) {
+                $activity['timestamp'] = 'N/A';
+            }
+        }
+        unset($activity); // break the reference with the last element
+        return $activities;
     } catch (PDOException $e) {
         error_log("DAL Error: getRecentActivities failed. Error: " . $e->getMessage());
         return []; // Return empty array on error

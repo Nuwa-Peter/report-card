@@ -97,7 +97,7 @@ $teacherInitials = $teacherInitials ?? ($_SESSION['current_teacher_initials'] ??
             background-color: white;
             position: relative;
             box-sizing: border-box;
-            /* All border, outline, and box-shadow properties removed */
+            border: 1px solid #333; /* Added a solid border */
             display: flex;
             flex-direction: column;
         }

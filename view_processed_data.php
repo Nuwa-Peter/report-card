@@ -134,6 +134,13 @@ $subjectDisplayNames = [
             border-color: #80bdff;
             box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
         }
+        @keyframes flash-warning {
+            0%, 100% { opacity: 1; /*background-color: #fff3cd;*/ }
+            50% { opacity: 0.4; /*background-color: #ffe082; slightly darker yellow */ }
+        }
+        .flashing-warning {
+            animation: flash-warning 1.5s infinite ease-in-out;
+        }
     </style>
 </head>
 <body>
@@ -191,8 +198,11 @@ $subjectDisplayNames = [
             </div>
         </div>
 
-        <div class="alert alert-info mt-3" role="alert">
-           <i class="fas fa-info-circle"></i> <strong>Important:</strong> After editing marks or adding students, always re-run <strong>'Calculate Summaries & Auto-Remarks'</strong> to ensure reports and summaries are accurate.
+        <?php
+            $showRecalculateWarning = isset($_SESSION['batch_data_changed_for_calc'][$batch_id]) && $_SESSION['batch_data_changed_for_calc'][$batch_id] === true;
+        ?>
+        <div id="recalculate-warning" class="alert alert-warning text-center mt-3 <?php echo $showRecalculateWarning ? '' : 'd-none'; ?>" role="alert">
+           <i class="fas fa-exclamation-triangle"></i> <strong>Important:</strong> Data has changed. Please re-run <strong>'Calculate Summaries & Auto-Remarks'</strong> to ensure reports and summaries are accurate.
         </div>
 
         <div class="row mt-3 mb-2">
@@ -589,6 +599,21 @@ $subjectDisplayNames = [
                 });
             }
 
+            // Flashing warning logic
+            const recalculateWarningDiv = document.getElementById('recalculate-warning');
+            if (recalculateWarningDiv && !recalculateWarningDiv.classList.contains('d-none')) {
+                recalculateWarningDiv.classList.add('flashing-warning');
+            }
+
+            const calculateBtn = document.querySelector('a[href^="run_calculations.php?batch_id=<?php echo $batch_id; ?>"]');
+            if (calculateBtn && recalculateWarningDiv && recalculateWarningDiv.classList.contains('flashing-warning')) {
+                calculateBtn.addEventListener('click', function() {
+                    // Stop flashing immediately on click, server will handle session flag on next load
+                    recalculateWarningDiv.classList.remove('flashing-warning');
+                    // Optionally, also hide it immediately, though server-side logic will handle it on reload
+                    // recalculateWarningDiv.classList.add('d-none');
+                });
+            }
         });
     </script>
 </body>
