@@ -450,25 +450,75 @@ try {
             async function fetchInitialDismissTimestamp() {
                 if (adminActivityBellLink && <?php echo (isset($_SESSION['role']) && $_SESSION['role'] === 'superadmin') ? 'true' : 'false'; ?>) {
                     try {
-                        const response = await fetch('api_get_dismissal_timestamp.php'); // New API endpoint needed
-                        if (!response.ok) throw new Error('Failed to fetch dismissal timestamp');
+                        const response = await fetch('api_get_dismissal_timestamp.php');
+                        if (!response.ok) throw new Error('Failed to fetch dismissal timestamp - Network error');
                         const data = await response.json();
                         if (data.success && data.timestamp) {
+                            // Assuming API now returns UTC 'YYYY-MM-DD HH:MM:SS' from DB
                             dbLastDismissedTimestamp = data.timestamp;
+                            console.log('Fetched initial dbLastDismissedTimestamp (UTC string from DB):', dbLastDismissedTimestamp);
+                        } else if (data.success && data.timestamp === null) {
+                            console.log('Initial dbLastDismissedTimestamp is null (from DB).');
+                            dbLastDismissedTimestamp = null;
+                        } else {
+                            console.warn('API_get_dismissal_timestamp did not return success or valid timestamp:', data);
+                            dbLastDismissedTimestamp = null;
                         }
                     } catch (error) {
                         console.error('Error fetching initial dismissal timestamp:', error);
-                        // Keep dbLastDismissedTimestamp as null, so all activities might appear new initially
+                        dbLastDismissedTimestamp = null;
                     }
                 }
             }
 
+            /**
+             * Parses an EAT timestamp string (DD/MM/YYYY HH:MM:SS) into a JavaScript Date object (internally UTC).
+             * @param {string} eatTimestampStr The EAT timestamp string.
+             * @returns {Date|null} A Date object or null if parsing fails.
+             */
+            function parseEatTimestampToDateObject(eatTimestampStr) {
+                if (!eatTimestampStr || typeof eatTimestampStr !== 'string') {
+                    console.warn('parseEatTimestampToDateObject: Invalid input', eatTimestampStr);
+                    return null;
+                }
+                // Regex for DD/MM/YYYY HH:MM:SS
+                const parts = eatTimestampStr.match(/^(\d{2})\/(\d{2})\/(\d{4})\s(\d{2}):(\d{2}):(\d{2})$/);
+                if (!parts) {
+                    console.error('parseEatTimestampToDateObject: Invalid EAT timestamp format:', eatTimestampStr);
+                    return null;
+                }
 
-            function formatRelativeTime(timestamp) {
+                const day = parseInt(parts[1], 10);
+                const month = parseInt(parts[2], 10) - 1; // JS months are 0-indexed
+                const year = parseInt(parts[3], 10);
+                const hours = parseInt(parts[4], 10);
+                const minutes = parseInt(parts[5], 10);
+                const seconds = parseInt(parts[6], 10);
+
+                // Construct an ISO 8601 string with EAT offset (+03:00)
+                // YYYY-MM-DDTHH:MM:SS+03:00
+                // Ensure components are padded if needed (though regex ensures 2 digits for most)
+                const isoEatStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}+03:00`;
+
+                const d = new Date(isoEatStr);
+                if (isNaN(d.getTime())) {
+                    console.error('parseEatTimestampToDateObject: Failed to parse EAT timestamp string into valid Date using ISO:', isoEatStr, 'Original:', eatTimestampStr);
+                    return null;
+                }
+                // console.log('parseEatTimestampToDateObject: Parsed', eatTimestampStr, '(EAT) to Date Object:', d.toISOString(), d);
+                return d; // This Date object correctly represents the EAT instant.
+            }
+
+
+            function formatRelativeTime(timestamp) { // timestamp is DD/MM/YYYY HH:MM:SS EAT
+                const dateObj = parseEatTimestampToDateObject(timestamp);
+                if (!dateObj || isNaN(dateObj.getTime())) {
+                    return timestamp; // Return original if parsing fails
+                }
                 const now = new Date();
-                const past = new Date(timestamp.replace(' ', 'T') + 'Z'); // Assume UTC, ensure ISO format for parsing
-                const diffInSeconds = Math.floor((now - past) / 1000);
+                const diffInSeconds = Math.floor((now - dateObj) / 1000);
 
+                if (diffInSeconds < 5) return `just now`;
                 if (diffInSeconds < 60) return `${diffInSeconds}s ago`;
                 const diffInMinutes = Math.floor(diffInSeconds / 60);
                 if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
@@ -495,6 +545,8 @@ try {
                         if (activities.length > 0) {
                             // Determine the newest timestamp from the fetched activities
                             newestActivityTimestamp = activities[0].timestamp; // Assuming activities are sorted DESC by timestamp
+                            console.log('Admin Feed: Fetched activities:', JSON.parse(JSON.stringify(activities)));
+                            console.log('Admin Feed: Current dbLastDismissedTimestamp for comparison:', dbLastDismissedTimestamp);
 
                             activities.forEach(activity => {
                                 const itemDiv = document.createElement('div');
@@ -515,18 +567,37 @@ try {
                             let newActivitiesCount = 0;
                             if (dbLastDismissedTimestamp) {
                                 activities.forEach(activity => {
-                                activities.forEach(activity => {
-                                    // Assuming server timestamps (activity.timestamp and dbLastDismissedTimestamp)
-                                    // are in 'YYYY-MM-DD HH:MM:SS' format and represent UTC.
-                                    // Append 'Z' to treat them as UTC for correct Date object creation.
-                                    if (new Date(activity.timestamp + 'Z') > new Date(dbLastDismissedTimestamp + 'Z')) {
-                                        newActivitiesCount++;
-                                    }
-                                });
+                            if (dbLastDismissedTimestamp) {
+                                // dbLastDismissedTimestamp is UTC 'YYYY-MM-DD HH:MM:SS' from DB
+                                const dismissedUtcDate = new Date(dbLastDismissedTimestamp.replace(' ', 'T') + 'Z');
+                                if (isNaN(dismissedUtcDate.getTime())) {
+                                    console.error('Admin Feed: Invalid dbLastDismissedTimestamp after parsing:', dbLastDismissedTimestamp);
+                                    newActivitiesCount = activities.length; // Treat all as new if dismiss TS is bad
+                                    console.log('Admin Feed: Invalid dbLastDismissedTimestamp, all activities considered new.');
+                                } else {
+                                    console.log('Admin Feed: DismissedDate object (UTC) for comparison:', dismissedUtcDate.toISOString());
+                                    activities.forEach(activity => {
+                                        // activity.timestamp is EAT 'DD/MM/YYYY HH:MM:SS'
+                                        const activityDateObject = parseEatTimestampToDateObject(activity.timestamp);
+
+                                        if (activityDateObject && !isNaN(activityDateObject.getTime())) {
+                                            const isNew = activityDateObject > dismissedUtcDate;
+                                            console.log(`Comparing EAT Activity (${activity.timestamp} -> ${activityDateObject.toISOString()}) > UTC Dismissed (${dbLastDismissedTimestamp} -> ${dismissedUtcDate.toISOString()}) = ${isNew}`);
+                                            if (isNew) {
+                                                newActivitiesCount++;
+                                            }
+                                        } else {
+                                            console.warn('Admin Feed: Could not parse activity timestamp, cannot compare:', activity.timestamp);
+                                            // Optionally count as new or skip, here skipping
+                                        }
+                                    });
+                                }
                             } else {
                                 // If no dismiss timestamp from DB, all fetched activities are considered new
                                 newActivitiesCount = activities.length;
+                                console.log('Admin Feed: No dbLastDismissedTimestamp, all activities considered new.');
                             }
+                            console.log('Admin Feed: Calculated newActivitiesCount:', newActivitiesCount);
 
                             if (adminActivityBadge) {
                                 if (newActivitiesCount > 0) {
@@ -542,6 +613,7 @@ try {
                             if (adminActivityBadge) {
                                 adminActivityBadge.style.display = 'none';
                             }
+                             console.log('Admin Feed: No activities fetched or activities array is empty.');
                         }
                     })
                     .catch(error => {
@@ -554,15 +626,17 @@ try {
             }
 
             if (adminActivityBellLink) {
-                fetchAdminActivityFeed();
+                // Initial fetch of dismissal timestamp when page loads for superadmin
+                fetchInitialDismissTimestamp().then(() => {
+                    fetchAdminActivityFeed(); // Initial feed fetch after getting dismiss timestamp
+                });
 
                 var activityDropdownInstance = new bootstrap.Dropdown(adminActivityBellLink);
 
                 adminActivityBellLink.addEventListener('show.bs.dropdown', async function () {
-                    // Fetch initial dismiss timestamp if not already fetched or if needed again
-                    if (dbLastDismissedTimestamp === null) { // Check if it needs fetching
-                        await fetchInitialDismissTimestamp();
-                    }
+                    // Re-fetch dismissal timestamp in case it was updated elsewhere or by another admin session (though less likely for this specific TS)
+                    // More importantly, ensures dbLastDismissedTimestamp is fresh if initial fetch failed.
+                    await fetchInitialDismissTimestamp();
                     fetchAdminActivityFeed(); // This will now use the potentially updated dbLastDismissedTimestamp
                 });
 
@@ -570,7 +644,22 @@ try {
                     adminDismissNotificationsLink.addEventListener('click', function(e) {
                         e.preventDefault();
 
-                        const timestampToStore = newestActivityTimestamp || new Date().toISOString().slice(0, 19).replace('T', ' ');
+                        let utcTimestampToStore;
+                        if (newestActivityTimestamp) { // newestActivityTimestamp is DD/MM/YYYY HH:MM:SS EAT
+                            const parsedDate = parseEatTimestampToDateObject(newestActivityTimestamp);
+                            if (parsedDate && !isNaN(parsedDate.getTime())) {
+                                // Convert the EAT date object to a 'YYYY-MM-DD HH:MM:SS' UTC string
+                                utcTimestampToStore = parsedDate.toISOString().slice(0, 19).replace('T', ' ');
+                            } else {
+                                // Fallback if parsing newestActivityTimestamp fails, use current UTC time
+                                console.warn('Admin Feed: Failed to parse newestActivityTimestamp, using current UTC time for dismissal.');
+                                utcTimestampToStore = new Date().toISOString().slice(0, 19).replace('T', ' ');
+                            }
+                        } else {
+                            // Feed was empty, use current UTC time
+                            utcTimestampToStore = new Date().toISOString().slice(0, 19).replace('T', ' ');
+                        }
+                        console.log('Admin Feed: "Mark All as Read" clicked. UTC Timestamp to store in DB:', utcTimestampToStore);
 
                         // Update in DB
                         fetch('api_update_dismissal_timestamp.php', {
