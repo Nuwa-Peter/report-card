@@ -47,15 +47,32 @@ if (empty($selectedClassValue) || empty($yearValue) || empty($termValue) || empt
 
 $isP4_P7 = in_array($selectedClassValue, ['P4', 'P5', 'P6', 'P7']);
 $isP1_P3 = in_array($selectedClassValue, ['P1', 'P2', 'P3']);
-$expectedSubjectInternalKeys = [];
+$expectedSubjectInternalKeys = []; // These are the internal codes like 'mtc', 'lit1'
 $requiredSubjectInternalKeys = [];
 
+// Define a mapping from human-readable sheet names to internal subject codes
+$sheetNameToInternalCodeMap = [
+    'english' => 'english', // Case-insensitive matching for sheet names
+    'maths' => 'mtc',
+    'literacy one' => 'lit1',
+    'literacy two' => 'lit2',
+    'local language' => 'local_lang',
+    'religious education' => 're',
+    'science' => 'science',
+    'sst' => 'sst',
+    'kiswahili' => 'kiswahili'
+];
+
 if ($isP4_P7) {
+    // For P4-P7, subjects are English, Maths, Science, SST, Kiswahili (optional)
+    // Internal codes: english, mtc, science, sst, kiswahili
     $expectedSubjectInternalKeys = ['english', 'mtc', 'science', 'sst', 'kiswahili'];
-    $requiredSubjectInternalKeys = ['english', 'mtc', 'science', 'sst'];
+    $requiredSubjectInternalKeys = ['english', 'mtc', 'science', 'sst']; // Kiswahili is optional
 } elseif ($isP1_P3) {
+    // For P1-P3, subjects are English, Maths, RE, Lit1, Lit2, Local Language
+    // Internal codes: english, mtc, re, lit1, lit2, local_lang
     $expectedSubjectInternalKeys = ['english', 'mtc', 're', 'lit1', 'lit2', 'local_lang'];
-    $requiredSubjectInternalKeys = $expectedSubjectInternalKeys;
+    $requiredSubjectInternalKeys = $expectedSubjectInternalKeys; // All are required for P1-P3
 } else {
     if (headers_sent()) { die('Invalid class selection and headers already sent.'); }
     $_SESSION['error_message'] = 'Invalid class selected: ' . htmlspecialchars($selectedClassValue);
@@ -63,18 +80,38 @@ if ($isP4_P7) {
     exit;
 }
 
-$uploadedFiles = $_FILES['subject_files'];
-foreach ($requiredSubjectInternalKeys as $reqKey) {
-    if (!isset($uploadedFiles['tmp_name'][$reqKey]) || $uploadedFiles['error'][$reqKey] !== UPLOAD_ERR_OK) {
-        if (headers_sent()) { die('Required file missing for ' . htmlspecialchars($reqKey) . ' and headers already sent.'); }
-        $_SESSION['error_message'] = ucfirst(str_replace('_', ' ', $reqKey)) . " file is required for class " . htmlspecialchars($selectedClassValue) . ". Error code: " .($uploadedFiles['error'][$reqKey] ?? 'N/A');
-        header('Location: data_entry.php');
-        exit;
-    }
+// --- New: Handle single file upload ---
+if (!isset($_FILES['marks_excel_file']) || $_FILES['marks_excel_file']['error'] !== UPLOAD_ERR_OK) {
+    $_SESSION['error_message'] = 'Marks Excel file is required. Error code: ' . ($_FILES['marks_excel_file']['error'] ?? 'N/A');
+    header('Location: data_entry.php');
+    exit;
 }
+$uploadedFilePath = $_FILES['marks_excel_file']['tmp_name'];
+// --- End New: Handle single file upload ---
 
 $pdo->beginTransaction();
 try {
+    $spreadsheet = IOFactory::load($uploadedFilePath); // Load the entire workbook
+
+    // Validate required sheets are present
+    $presentSheetNames = $spreadsheet->getSheetNames();
+    $presentInternalSubjectKeys = [];
+    foreach ($presentSheetNames as $sheetName) {
+        $normalizedSheetName = strtolower(trim($sheetName));
+        if (isset($sheetNameToInternalCodeMap[$normalizedSheetName])) {
+            $presentInternalSubjectKeys[] = $sheetNameToInternalCodeMap[$normalizedSheetName];
+        }
+    }
+
+    foreach ($requiredSubjectInternalKeys as $reqKey) {
+        if (!in_array($reqKey, $presentInternalSubjectKeys)) {
+            $_SESSION['error_message'] = "Required subject sheet for '" . ucfirst(str_replace('_', ' ', $reqKey)) . "' is missing from the uploaded Excel file for class " . htmlspecialchars($selectedClassValue) . ".";
+            header('Location: data_entry.php');
+            exit;
+        }
+    }
+    // --- End Sheet Validation ---
+
     $academicYearId = findOrCreateLookup($pdo, 'academic_years', 'year_name', $yearValue);
     $termId = findOrCreateLookup($pdo, 'terms', 'term_name', $termValue);
     $classId = findOrCreateLookup($pdo, 'classes', 'class_name', $selectedClassValue);
@@ -100,105 +137,125 @@ try {
         throw new Exception("Could not create or retrieve report batch ID.");
     }
 
-    foreach ($expectedSubjectInternalKeys as $subjectInternalKey) {
-        if (!isset($uploadedFiles['tmp_name'][$subjectInternalKey]) || $uploadedFiles['error'][$subjectInternalKey] !== UPLOAD_ERR_OK) {
-            if ($subjectInternalKey === 'kiswahili' && $isP4_P7) {
-                continue;
+    // Iterate through each sheet in the loaded workbook
+    foreach ($spreadsheet->getSheetNames() as $sheetName) {
+        $normalizedSheetName = strtolower(trim($sheetName));
+
+        // Skip the "Instructions" sheet or any other non-subject sheets
+        if ($normalizedSheetName === 'instructions' || !isset($sheetNameToInternalCodeMap[$normalizedSheetName])) {
+            continue;
+        }
+
+        $subjectInternalKey = $sheetNameToInternalCodeMap[$normalizedSheetName];
+        $currentSheetObject = $spreadsheet->getSheetByName($sheetName); // Get sheet by its original name
+
+        // Check if this subject is expected for the selected class
+        if (!in_array($subjectInternalKey, $expectedSubjectInternalKeys)) {
+            // This sheet might be for a different class level or an extra sheet.
+            // If it's not Kiswahili for P4-P7 (which is optional), we can log a warning or ignore.
+            // If it's Kiswahili and class is P1-P3, it's unexpected.
+            if ($subjectInternalKey === 'kiswahili' && $isP1_P3) {
+                 error_log("Warning: Kiswahili sheet found for class $selectedClassValue, but it's not expected. Skipping.");
+                 continue;
             }
-            if (in_array($subjectInternalKey, $requiredSubjectInternalKeys)) {
-                 throw new Exception("Required file for " . htmlspecialchars($subjectInternalKey) . " was not available during detailed processing.");
+            // For other unexpected sheets, just skip.
+            if ($subjectInternalKey !== 'kiswahili' || !$isP4_P7) { // if not (kiswahili AND p4-p7)
+                 error_log("Warning: Sheet '$sheetName' (maps to '$subjectInternalKey') is not expected for class $selectedClassValue. Skipping.");
+                 continue;
+            }
+        }
+
+
+        // Fetch or create subject ID
+        // Use the original sheet name for user-facing messages if needed, but internal key for DB.
+        $subjectDisplayNameForError = $sheetName; // Or derive from internal key if preferred for consistency
+
+        // Get the full subject name from DB or construct it
+        $stmtSubjectName = $pdo->prepare("SELECT subject_name_full FROM subjects WHERE subject_code = :code");
+        $stmtSubjectName->execute([':code' => $subjectInternalKey]);
+        $dbSubjectNameFull = $stmtSubjectName->fetchColumn();
+
+        $subjectNameForLookup = $dbSubjectNameFull ?: ucfirst(str_replace('_', ' ', $subjectInternalKey));
+
+
+        $subjectId = findOrCreateLookup($pdo, 'subjects', 'subject_code', $subjectInternalKey, ['subject_name_full' => $subjectNameForLookup]);
+        if (!$subjectId) {
+            throw new Exception("Failed to find or create subject ID for: " . htmlspecialchars($subjectDisplayNameForError) . " (using internal code: " . htmlspecialchars($subjectInternalKey) . ")");
+        }
+
+        // Headers are LIN, Names/Name, BOT, MOT, EOT in row 1
+        $headerLIN = trim(strtoupper(strval($currentSheetObject->getCell('A1')->getValue())));
+        $headerName = trim(strtoupper(strval($currentSheetObject->getCell('B1')->getValue())));
+        $headerBOT = trim(strtoupper(strval($currentSheetObject->getCell('C1')->getValue())));
+        $headerMOT = trim(strtoupper(strval($currentSheetObject->getCell('D1')->getValue())));
+        $headerEOT = trim(strtoupper(strval($currentSheetObject->getCell('E1')->getValue())));
+
+        if ($headerLIN !== 'LIN' || !in_array($headerName, ['NAMES', 'NAME']) || $headerBOT !== 'BOT' || $headerMOT !== 'MOT' || $headerEOT !== 'EOT') {
+            throw new Exception("Invalid headers in sheet '" . htmlspecialchars($sheetName) . "'. Expected A1='LIN', B1='Names/Name', C1='BOT', D1='MOT', E1='EOT'. Found: $headerLIN, $headerName, $headerBOT, $headerMOT, $headerEOT");
+        }
+
+        $highestRow = $currentSheetObject->getHighestDataRow();
+        $startRow = 2; // Data starts from row 2
+
+        if ($highestRow < $startRow) {
+            error_log("Warning: No student data rows found in sheet '" . htmlspecialchars($sheetName) . "'. Sheet might be empty after row 1.");
+            // If this subject is required, this might be an issue.
+            // For now, just continue. The earlier check for required sheets handles missing sheets.
+            // This handles empty-but-present sheets.
+            if (in_array($subjectInternalKey, $requiredSubjectInternalKeys) && ($subjectInternalKey !== 'kiswahili' || !$isP4_P7) ) {
+                 // Kiswahili is optional for P4-P7, so an empty sheet is fine.
+                 // For other required subjects, an empty sheet could be an error or warning.
+                 // Let's throw an exception if a *required* sheet is empty to alert the user.
+                 // Allow Kiswahili for P4-P7 to be empty.
+                 if (!($subjectInternalKey === 'kiswahili' && $isP4_P7)) {
+                    throw new Exception("Required subject sheet '" . htmlspecialchars($sheetName) . "' is present but contains no student data.");
+                 }
             }
             continue;
         }
 
-        $filePath = $uploadedFiles['tmp_name'][$subjectInternalKey];
-        $spreadsheet = IOFactory::load($filePath);
-        $sheet = $spreadsheet->getActiveSheet();
-
-        // Subject name is no longer read from the Excel sheet.
-        // It's derived from $subjectInternalKey (from the form upload context).
-        $stmtSubjectName = $pdo->prepare("SELECT subject_name_full FROM subjects WHERE subject_code = :code");
-        $stmtSubjectName->execute([':code' => $subjectInternalKey]);
-        $subjectNameForFile = $stmtSubjectName->fetchColumn();
-
-        if (!$subjectNameForFile) {
-            // If subject_name_full is not found in DB, construct a fallback name or throw error.
-            // Using subject_code as fallback might be acceptable if subject_name_full is optional in DB.
-            $subjectNameForFile = ucfirst(str_replace('_', ' ', $subjectInternalKey)); // Fallback name
-            // Optionally, throw an exception if a full name is strictly required:
-            // throw new Exception("Could not determine full subject name for internal key: " . htmlspecialchars($subjectInternalKey));
-        }
-
-        // Ensure subjectId is found or created.
-        // The 'subject_name_full' passed to findOrCreateLookup will be the one derived from DB or the fallback.
-        $subjectId = findOrCreateLookup($pdo, 'subjects', 'subject_code', $subjectInternalKey, ['subject_name_full' => $subjectNameForFile]);
-        if (!$subjectId) {
-            throw new Exception("Failed to find or create subject ID for: " . htmlspecialchars($subjectNameForFile));
-        }
-
-        // Headers are LIN, Names/Name, BOT, MOT, EOT in row 1
-        $headerLIN = trim(strtoupper(strval($sheet->getCell('A1')->getValue())));
-        $headerName = trim(strtoupper(strval($sheet->getCell('B1')->getValue()))); // Handles "Names" or "Name"
-        $headerBOT = trim(strtoupper(strval($sheet->getCell('C1')->getValue())));
-        $headerMOT = trim(strtoupper(strval($sheet->getCell('D1')->getValue())));
-        $headerEOT = trim(strtoupper(strval($sheet->getCell('E1')->getValue())));
-
-        // Validate headers
-        if ($headerLIN !== 'LIN' || !in_array($headerName, ['NAMES', 'NAME']) || $headerBOT !== 'BOT' || $headerMOT !== 'MOT' || $headerEOT !== 'EOT') {
-            throw new Exception("Invalid headers in Excel file for subject '" . htmlspecialchars($subjectNameForFile) . "'. Expected A1='LIN', B1='Names/Name', C1='BOT', D1='MOT', E1='EOT'. Found: $headerLIN, $headerName, $headerBOT, $headerMOT, $headerEOT");
-        }
-
-        $highestRow = $sheet->getHighestDataRow();
-        // Data now always starts from row 2, as the instructional row 2 has been removed from the template.
-        $startRow = 2;
-
-        if ($highestRow < $startRow) { // Check if there's any data after the header row
-             error_log("Warning: No student data rows found in file for " . htmlspecialchars($subjectNameForFile) . " (File for " . htmlspecialchars($subjectInternalKey) . "). Sheet might be empty after row 1.");
-             continue; // Skip this file if no data rows
-        }
-
         for ($row = $startRow; $row <= $highestRow; $row++) {
-            $linValue = trim(strval($sheet->getCell('A' . $row)->getValue()));
+            $linValue = trim(strval($currentSheetObject->getCell('A' . $row)->getValue()));
             $studentNameRaw = trim(strval($sheet->getCell('B' . $row)->getValue()));
 
             if (empty($studentNameRaw)) continue; // Skip if no student name
             $studentNameAllCaps = strtoupper($studentNameRaw);
-
-            // Handle LIN: if empty, store as NULL or an empty string based on DB schema.
-            // For consistency, let's use NULL if the schema allows, or empty string if not.
-            // Assuming 'lin_no' column in 'students' table can be NULL.
             $linToStore = !empty($linValue) ? $linValue : null;
 
+            // Find or Create Student (reusing logic from current DAL upsertStudent if possible, or inline here)
             $stmtStudent = $pdo->prepare("SELECT id FROM students WHERE student_name = :name");
             $stmtStudent->execute([':name' => $studentNameAllCaps]);
             $studentId = $stmtStudent->fetchColumn();
 
             if (!$studentId) {
+                // If student not found by name, try by LIN if LIN is provided
+                if ($linToStore) {
+                    $stmtStudentByLin = $pdo->prepare("SELECT id FROM students WHERE lin_no = :lin_no");
+                    $stmtStudentByLin->execute([':lin_no' => $linToStore]);
+                    $studentId = $stmtStudentByLin->fetchColumn();
+                    // If found by LIN, update their name if it's different (rare case, LIN should be primary)
+                    if ($studentId) {
+                        $stmtUpdateName = $pdo->prepare("UPDATE students SET student_name = :name, current_class_id = :class_id WHERE id = :id");
+                        $stmtUpdateName->execute([':name' => $studentNameAllCaps, ':class_id' => $classId, ':id' => $studentId]);
+                    }
+                }
+            }
+
+            if (!$studentId) { // Still not found, so insert new student
                 $stmtInsertStudent = $pdo->prepare("INSERT INTO students (student_name, current_class_id, lin_no) VALUES (:name, :class_id, :lin_no)");
                 $stmtInsertStudent->execute([':name' => $studentNameAllCaps, ':class_id' => $classId, ':lin_no' => $linToStore]);
                 $studentId = $pdo->lastInsertId();
-            } else {
-                // Update existing student's class and LIN (if provided or changed)
-                // Ensure lin_no is only updated if a new value is provided or if it's different.
-                // If $linToStore is null and DB has a value, we might not want to overwrite.
-                // However, if Excel explicitly clears it, it should be cleared in DB.
-                // The current logic: $linToStore will be NULL if Excel cell is empty.
-                // This means an empty LIN in Excel will set lin_no to NULL in DB.
-                $sqlUpdateStudent = "UPDATE students
-                                     SET current_class_id = :class_id, lin_no = :lin_no
-                                     WHERE id = :id";
-                $stmtUpdateStudent = $pdo->prepare($sqlUpdateStudent);
-                $stmtUpdateStudent->execute([
-                    ':class_id' => $classId,
-                    ':lin_no' => $linToStore,
-                    ':id' => $studentId
-                ]);
+            } else { // Student found, update their current class and LIN if necessary
+                $stmtUpdateStudent = $pdo->prepare("UPDATE students SET current_class_id = :class_id, lin_no = :lin_no WHERE id = :id");
+                $stmtUpdateStudent->execute([':class_id' => $classId, ':lin_no' => $linToStore, ':id' => $studentId]);
             }
 
-            $botScore = $sheet->getCell('C' . $row)->getValue(); // BOT is now in column C
-            $motScore = $sheet->getCell('D' . $row)->getValue(); // MOT is now in column D
-            $eotScore = $sheet->getCell('E' . $row)->getValue(); // EOT is now in column E
+            // Get scores
+            $botScore = $currentSheetObject->getCell('C' . $row)->getValue();
+            $motScore = $currentSheetObject->getCell('D' . $row)->getValue();
+            $eotScore = $currentSheetObject->getCell('E' . $row)->getValue();
 
+            // Insert/Update scores
             $sqlScore = "INSERT INTO scores (student_id, subject_id, report_batch_id, bot_score, mot_score, eot_score)
                          VALUES (:student_id, :subject_id, :report_batch_id, :bot, :mot, :eot)
                          ON DUPLICATE KEY UPDATE
@@ -206,29 +263,26 @@ try {
                             mot_score = VALUES(mot_score),
                             eot_score = VALUES(eot_score)";
             $stmtScore = $pdo->prepare($sqlScore);
-
-            $paramsForExecute = [
+            $stmtScore->execute([
                 ':student_id' => $studentId,
                 ':subject_id' => $subjectId,
                 ':report_batch_id' => $reportBatchId,
                 ':bot' => (is_numeric($botScore) ? (float)$botScore : null),
                 ':mot' => (is_numeric($motScore) ? (float)$motScore : null),
                 ':eot' => (is_numeric($eotScore) ? (float)$eotScore : null)
-            ];
-
-            // Standard execution. If HY093 occurs here, the main catch block will handle it.
-            // For specific debugging of this HY093, the user would re-insert the echo/exit debug block here.
-            $stmtScore->execute($paramsForExecute);
+            ]);
         }
-    }
+    } // End of loop through sheets
 
     $pdo->commit();
-    $_SESSION['success_message'] = 'Data imported successfully for class ' . htmlspecialchars($selectedClassValue) . ' (Batch ID: ' . htmlspecialchars($reportBatchId) . '). Ready for next steps (calculations).';
-    $_SESSION['current_teacher_initials'] = $teacherInitialsFromForm; // Persist for report card generation
-    $_SESSION['last_processed_batch_id'] = $reportBatchId; // For linking to view_processed_data
+    $_SESSION['success_message'] = 'Data imported successfully from the Excel file for class ' . htmlspecialchars($selectedClassValue) . ' (Batch ID: ' . htmlspecialchars($reportBatchId) . '). Ready for next steps (calculations).';
+    $_SESSION['current_teacher_initials'] = $teacherInitialsFromForm;
+    $_SESSION['last_processed_batch_id'] = $reportBatchId;
 
     // Log successful import
-    require_once 'dal.php'; // Ensure DAL is available for logActivity
+    if (!function_exists('logActivity')) { // Ensure dal.php was required if not already
+        require_once 'dal.php';
+    }
     $logDescription = "Imported data for class " . htmlspecialchars($selectedClassValue) .
                       ", term " . htmlspecialchars($termValue) .
                       ", year " . htmlspecialchars($yearValue) .

@@ -221,7 +221,7 @@ $teacherInitials = $teacherInitials ?? ($_SESSION['current_teacher_initials'] ??
                 <strong>YEAR:</strong> <span><?php echo $yearName; ?></span>
                 <strong>TERM:</strong> <span><?php echo $termName; ?></span>
             </div>
-            <div class="lin-number-display"><strong>LIN NO.:</strong> <?php echo $linNo; ?></div>
+            <div class="lin-number-display"><strong>LIN:</strong> <?php echo $linNo; ?></div>
         </div>
 
         <?php if ($isP4_P7): ?>

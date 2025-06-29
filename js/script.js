@@ -36,20 +36,23 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function updateSubjectFields(selectedClass) {
-    const commonSubjects = document.querySelectorAll('.common-subject');
-    const p1p3Subjects = document.querySelectorAll('.p1p3-subject');
-    const p4p7Subjects = document.querySelectorAll('.p4p7-subject');
+    // Selectors for the new teacher initial blocks
+    const commonSubjectInitials = document.querySelectorAll('.common-subject-initials');
+    const p1p3SubjectInitials = document.querySelectorAll('.p1p3-subject-initials');
+    const p4p7SubjectInitials = document.querySelectorAll('.p4p7-subject-initials');
 
-    // Helper to set visibility and requirement for a group of subject blocks
-    function setFields(elements, display, required) {
+    // Helper to set visibility and requirement for a group of teacher initial blocks
+    function setInitialFields(elements, display, required) {
         elements.forEach(block => {
             block.style.display = display ? '' : 'none';
-            const inputs = block.querySelectorAll('input[type="file"], input[type="text"]');
-            inputs.forEach(input => {
-                if (input.id === 'kiswahili_file' || input.id === 'kiswahili_initials') { // Kiswahili is special
+            // Only target text inputs for teacher initials within these blocks
+            const textInputs = block.querySelectorAll('input[type="text"]');
+            textInputs.forEach(input => {
+                // Kiswahili initials are optional for P4-P7
+                if (input.id === 'kiswahili_initials') {
                     if (selectedClass && selectedClass.startsWith('P') && parseInt(selectedClass.substring(1)) >= 4) { // P4-P7
-                        input.required = false; // Kiswahili file and initials are optional for P4-P7
-                    } else { // P1-P3 or no class selected
+                        input.required = false;
+                    } else { // P1-P3 or no class selected (though it would be hidden)
                          input.required = required && display;
                     }
                 } else {
@@ -59,18 +62,21 @@ function updateSubjectFields(selectedClass) {
         });
     }
 
+    // The main file input is always visible and required, handled by HTML `required` attribute.
+    // This function now only controls the visibility and requirement of teacher initial fields.
+
     if (selectedClass.startsWith('P1') || selectedClass.startsWith('P2') || selectedClass.startsWith('P3')) {
-        setFields(commonSubjects, true, true); // English, MTC
-        setFields(p1p3Subjects, true, true);   // RE, Lit1, Lit2, Local Lang
-        setFields(p4p7Subjects, false, false); // Science, SST, Kiswahili
+        setInitialFields(commonSubjectInitials, true, true); // English, MTC initials
+        setInitialFields(p1p3SubjectInitials, true, true);   // RE, Lit1, Lit2, Local Lang initials
+        setInitialFields(p4p7SubjectInitials, false, false); // Science, SST, Kiswahili initials
     } else if (selectedClass.startsWith('P4') || selectedClass.startsWith('P5') || selectedClass.startsWith('P6') || selectedClass.startsWith('P7')) {
-        setFields(commonSubjects, true, true); // English, MTC
-        setFields(p1p3Subjects, false, false);
-        setFields(p4p7Subjects, true, true);   // Science, SST, Kiswahili (Kiswahili requirement handled in setFields)
+        setInitialFields(commonSubjectInitials, true, true); // English, MTC initials
+        setInitialFields(p1p3SubjectInitials, false, false);
+        setInitialFields(p4p7SubjectInitials, true, true);   // Science, SST, Kiswahili initials (Kiswahili requirement handled in setInitialFields)
     } else { // No class selected or unknown class
-        setFields(commonSubjects, true, false); // Show common but don't require initially
-        setFields(p1p3Subjects, false, false);
-        setFields(p4p7Subjects, false, false);
+        setInitialFields(commonSubjectInitials, true, false); // Show common but don't require initially
+        setInitialFields(p1p3SubjectInitials, false, false);
+        setInitialFields(p4p7SubjectInitials, false, false);
     }
 }
 
