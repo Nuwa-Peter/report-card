@@ -6,70 +6,157 @@ if (session_status() === PHP_SESSION_NONE) {
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
-    // Optional: Set a flash message for the login page
-    // $_SESSION['login_error_message'] = "You must be logged in to access this page.";
     header('Location: login.php');
     exit;
 }
 
-// Original PHP code from about.php (like date_default_timezone_set) follows here
-date_default_timezone_set('Africa/Kampala'); // Or user's preferred timezone
+date_default_timezone_set('Africa/Kampala');
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>User Manual - Report System - Maria Ow'embabazi P/S</title>
+    <title>User Manual & System Information - Report System</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
-    <link href="css/style.css" rel="stylesheet">
+    <link href="css/style.css" rel="stylesheet"> {/* General site styles */}
     <link rel="icon" type="image/png" href="images/logo.png">
     <style>
-        body { background-color: #e0f7fa; /* Matching dashboard theme */ }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f9; /* Lighter, cleaner background */
+            color: #333;
+            line-height: 1.6;
+        }
+        .navbar {
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
         .container.main-content {
-            background-color: #fff;
-            padding: 25px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            margin-top: 20px;
+            background-color: #ffffff;
+            padding: 30px 40px; /* Increased padding */
+            border-radius: 10px; /* Slightly more pronounced radius */
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08); /* Softer, more modern shadow */
+            margin-top: 30px;
             margin-bottom: 30px;
         }
         .about-header {
             text-align: center;
-            margin-bottom: 2rem;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid #dee2e6;
+            margin-bottom: 2.5rem; /* Increased spacing */
+            padding-bottom: 1.5rem; /* Increased spacing */
+            border-bottom: 1px solid #e9ecef; /* Lighter border */
         }
         .about-header img {
-            width: 70px; /* Consistent with dashboard sidebar logo size */
-            height: 70px;
+            width: 80px; /* Slightly larger logo */
+            height: 80px;
             border-radius: 50%;
-            margin-bottom: 10px;
-            border: 2px solid #007bff;
+            margin-bottom: 15px;
+            border: 3px solid #007bff; /* Standard Bootstrap primary blue */
+            box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
         }
-        .about-header h2 {
-            color: #0056b3;
-            margin-bottom: 0.5rem;
+        .about-header h1 { /* Changed h2 to h1 for main page title */
+            font-weight: 600;
+            color: #2c3e50; /* Darker, sophisticated blue/grey */
+            margin-bottom: 0.75rem;
+            font-size: 2.2rem; /* Larger main title */
         }
-        .about-header .datetime-display {
-            font-size: 0.9em;
-            color: #6c757d;
-        }
-        .section-title {
-            color: #0056b3;
-            margin-top: 2rem;
-            margin-bottom: 1rem;
-            padding-bottom: 0.5rem;
-            border-bottom: 2px solid #007bff;
-            display: inline-block;
-        }
-        .credits {
-            margin-top: 2.5rem;
-            padding-top: 1.5rem;
-            border-top: 1px solid #eee;
+        .datetime-display {
             font-size: 0.9em;
             color: #555;
+        }
+
+        /* Section Styling */
+        section {
+            margin-bottom: 2.5rem;
+            padding: 25px; /* Increased padding for sections */
+            background-color: #fdfdfd;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); /* Subtle shadow for sections */
+        }
+        .section-title {
+            font-size: 1.75rem;
+            font-weight: 600;
+            color: #0056b3;
+            margin-top: 0;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 3px solid #007bff;
+            display: block;
+            text-align: left;
+            letter-spacing: -0.5px;
+        }
+         section#school-contacts .section-title,
+         section#new-features-docs .section-title {
+            text-align: center;
+        }
+
+
+        section#help-guide h5 { /* Sub-headers in help guide */
+            font-size: 1.25rem;
+            color: #0067c2; /* Slightly lighter blue for sub-headers */
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+        section#help-guide ol, section#help-guide ul,
+        section#new-features-docs ol, section#new-features-docs ul {
+            padding-left: 25px;
+        }
+        section#help-guide li, section#new-features-docs li {
+            margin-bottom: 0.85rem; /* More space for list items */
+            color: #454545;
+            line-height: 1.7; /* Improved line height for readability */
+        }
+        section#help-guide strong, section#new-features-docs strong {
+            color: #0056b3;
+            font-weight: 600; /* Bolder strong tags */
+        }
+        section#help-guide ul ul li { /* Nested list items */
+            margin-bottom: 0.5rem;
+            font-size: 0.95em;
+        }
+
+
+        .btn-danger {
+            box-shadow: 0 2px 5px rgba(220, 53, 69, 0.3);
+        }
+        .btn-danger:hover {
+            box-shadow: 0 4px 8px rgba(220, 53, 69, 0.4);
+        }
+
+        .credits {
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 1px solid #e0e0e0;
+            font-size: 0.9em;
+            color: #555;
+            text-align: center; /* Center credits text */
+        }
+        .credits ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        .credits li {
+            margin-bottom: 0.5rem;
+        }
+
+        h2, h3, h4, h5 { /* Global for other headings if any */
+             letter-spacing: -0.5px;
+        }
+
+        @media (max-width: 768px) {
+            .container.main-content {
+                padding: 20px;
+            }
+            .about-header h1 {
+                font-size: 1.8rem;
+            }
+            .section-title {
+                font-size: 1.5rem;
+            }
+            section#help-guide h5 {
+                font-size: 1.15rem;
+            }
         }
     </style>
 </head>
@@ -92,18 +179,35 @@ date_default_timezone_set('Africa/Kampala'); // Or user's preferred timezone
     <div class="container main-content">
         <div class="about-header">
             <img src="images/logo.png" alt="School Logo" onerror="this.style.display='none';">
-            <h2>User Manual & System Information</h2>
+            <h1>User Manual & System Information</h1>
             <p class="datetime-display">Current Date & Time: <?php echo date("D, d M Y H:i:s"); ?></p>
         </div>
 
-        <div class="text-center mb-4">
-            <a href="download_user_manual.php" class="btn btn-danger btn-lg"> <!-- Changed btn-primary to btn-danger for red -->
-                <i class="fas fa-file-pdf me-2"></i> Download User Manual (PDF) <!-- Changed icon to fa-file-pdf -->
+        <div class="text-center mb-5"> {/* Increased margin-bottom */}
+            <a href="download_user_manual.php" class="btn btn-danger btn-lg">
+                <i class="fas fa-file-pdf me-2"></i> Download User Manual (PDF)
             </a>
         </div>
 
-        <section id="school-contacts" style="text-align: center; margin-bottom: 2rem;">
-            <h3 class="section-title" style="display: block; text-align: center;">School Contacts</h3>
+        <section id="about-system">
+            <h3 class="section-title">About the Report Card System (v8.0)</h3>
+            <p>This system is designed to streamline the generation and management of student academic reports for Maria Ow'embabazi Primary School. It allows for the importation of student scores from Excel files, calculation of termly performance metrics, and generation of printable PDF report cards and summary sheets.</p>
+            <p>Key features include:</p>
+            <ul>
+                <li><strong>Unified Excel Templates (New in v8.0):</strong> Streamlined data import using a single Excel workbook per class level (Lower Primary P1-P3, Upper Primary P4-P7). Each subject's data is entered into a separate, pre-named sheet within the workbook.</li>
+                <li>Batch processing of student marks.</li>
+                <li>Automatic calculation of aggregates, divisions (for P4-P7), averages, and class positions (for P1-P3).</li>
+                <li>Automated generation of teacher and headteacher remarks based on performance.</li>
+                <li>Persistent storage of processed data in a database for historical access.</li>
+                <li>A user-friendly dashboard for navigation and accessing various functionalities.</li>
+                <li>Generation of individual and class-wide PDF report cards.</li>
+                <li>Class performance summary sheets with visual charts.</li>
+                <li>Student Analytics: Historical Performance Tracking and Comparative Analysis.</li>
+            </ul>
+        </section>
+
+        <section id="school-contacts" style="text-align: center;">
+            <h3 class="section-title">School Contacts</h3>
             <div style="margin-top: 1rem;">
                 <p style="font-size: 1.2em; font-weight: bold; margin-bottom: 0.5rem;">Maria Ow'embabazi Primary School</p>
                 <address style="font-style: normal; line-height: 1.6;">
@@ -112,96 +216,82 @@ date_default_timezone_set('Africa/Kampala'); // Or user's preferred timezone
                     Email: houseofnazareth.schools@gmail.com
                 </address>
             </div>
-            <!-- Add more contact details as needed -->
-        </section>
-
-        <section id="about-system">
-            <h3 class="section-title">About the Report Card System</h3>
-            <p>This system is designed to streamline the generation and management of student academic reports for Maria Ow'embabazi Primary School. It allows for the importation of student scores from Excel files, calculation of termly performance metrics, and generation of printable PDF report cards and summary sheets.</p>
-            <p>Key features include:</p>
-            <ul>
-                <li>Batch processing of student marks from standardized Excel templates.</li>
-                <li>Automatic calculation of aggregates, divisions (for P4-P7), averages, and class positions (for P1-P3).</li>
-                <li>Automated generation of teacher and headteacher remarks based on performance.</li>
-                <li>Persistent storage of processed data in a database for historical access.</li>
-                <li>A user-friendly dashboard for navigation and accessing various functionalities.</li>
-                <li>Generation of individual and class-wide PDF report cards.</li>
-                <li>Class performance summary sheets with visual charts.</li>
-            </ul>
         </section>
 
         <section id="help-guide">
-            <h3 class="section-title">Help & Navigation Guide</h3>
-            <p><strong>Dashboard:</strong> The main entry point. Use the sidebar to navigate.</p>
+            <h3 class="section-title">System Usage Guide (v8.0 Workflow)</h3>
+            <p><strong>Dashboard:</strong> The main entry point. Use the sidebar to navigate to different sections of the system.</p>
 
-            <h5><i class="fas fa-file-excel me-2"></i>Download Marks Entry Template</h5>
+            <h5><i class="fas fa-file-download me-2"></i>Step 1: Download Marks Entry Template</h5>
             <ol>
-                <li>Navigate to "Download Marks Entry Template" from the sidebar.</li>
-                <li>Click the download link/button to get the Excel file (`student_marks_template.xlsx`).</li>
-                <li>Open the template in Microsoft Excel or a compatible spreadsheet program.</li>
-                <li><strong>Crucial Formatting:</strong>
+                <li>Navigate to "Data Entry" from the sidebar on the main dashboard.</li>
+                <li>On the Data Entry page, click the "Select Template to Download" button.</li>
+                <li>Choose the appropriate template for the class level you are working with:
                     <ul>
-                        <li>Enter the Subject Name (e.g., "ENGLISH", "MATHEMATICS") exactly in cell A1. This is case-sensitive and must match system subject codes if applicable for some internal logic, or be consistent.</li>
-                        <li>Column headers in row 1 should be: Student Name (B1), B.O.T Score (C1), M.O.T Score (D1), E.O.T Score (E1). (Adjust if template is different, this is an example).</li>
-                        <li>Student names (starting from cell B2) must be in ALL CAPS.</li>
-                        <li>Enter scores for Beginning of Term (B.O.T), Mid of Term (M.O.T), and End of Term (E.O.T) in the respective columns. Scores should be numerical (0-100). Leave blank or use 'N/A' if a score is not available.</li>
+                        <li><strong>Lower Primary Template (P1-P3):</strong> Includes sheets for English, Maths, Literacy One, Literacy Two, Local Language, and Religious Education.</li>
+                        <li><strong>Upper Primary Template (P4-P7):</strong> Includes sheets for English, Maths, Science, SST, and Kiswahili.</li>
                     </ul>
                 </li>
-                <li>Save the completed file for each subject for the class.</li>
+                <li>An "Instructions" sheet is included in each template. Please read it carefully. Save the downloaded Excel file to your computer.</li>
             </ol>
 
-            <h5><i class="fas fa-edit me-2"></i>Marks Entry (Importing Scores)</h5>
+            <h5><i class="fas fa-edit me-2"></i>Step 2: Enter Data into Excel</h5>
             <ol>
-                <li>Navigate to "Marks Entry" from the sidebar.</li>
-                <li>Select the correct Class, Year, and Term from the dropdown menus.</li>
-                <li>Enter the "This Term Ended On" and "Next Term Begins On" dates.</li>
-                <li>For each subject taught in the selected class:
+                <li>Open the downloaded template file using Microsoft Excel or a compatible spreadsheet program.</li>
+                <li>Navigate to each subject's sheet (e.g., "English", "Maths"). <strong>Important: Do NOT change the sheet names.</strong></li>
+                <li>Enter student data starting from Row 2 in each subject sheet:
                     <ul>
-                        <li>Click "Choose File" next to the subject name (e.g., English Results).</li>
-                        <li>Select the corresponding completed Excel marks file you prepared for that subject.</li>
-                        <li>Enter the Teacher's Initials for that subject (e.g., J.D.).</li>
+                        <li><strong>LIN:</strong> Student's Learner Identification Number (if available, otherwise leave blank).</li>
+                        <li><strong>Names/Name:</strong> Student's full name in ALL CAPS.</li>
+                        <li><strong>BOT:</strong> Beginning of Term score (out of 100).</li>
+                        <li><strong>MOT:</strong> Mid of Term score (out of 100).</li>
+                        <li><strong>EOT:</strong> End of Term score (out of 100).</li>
                     </ul>
                 </li>
-                <li>Once all subject files and initials are provided for the class configuration, click the "Process & Save Data" button at the bottom.</li>
-                <li>The system will validate the files and save the scores. You should see a success or error message.</li>
-                <li>If successful, a link to "View Details for Processed Batch ID: X" will appear. Click this to proceed to the next step.</li>
+                <li>Save the Excel file once all data for all subjects for the class has been entered.</li>
             </ol>
 
-            <h5><i class="fas fa-archive me-2"></i>View Report Archives & Process Data</h5>
+            <h5><i class="fas fa-upload me-2"></i>Step 3: Upload Excel File & Enter Details</h5>
             <ol>
-                <li>Navigate to "View Report Archives" from the sidebar.</li>
-                <li>You can use the filters (Year, Term, Class) to find specific batches or view all. Click "Filter".</li>
-                <li>Each processed batch will be listed with its details and action buttons.</li>
-                <li>For a batch that has had its marks imported but not yet fully processed:
+                <li>Return to the "Data Entry" page in the system.</li>
+                <li>Fill in the "School & Term Information" section:
                     <ul>
-                        <li>Click the "<i class="fas fa-cogs"></i> Process/View Data" button. This takes you to the `view_processed_data.php` page.</li>
-                        <li>On this page, review the imported scores if needed.</li>
-                        <li><strong>Crucially, click the "<i class="fas fa-calculator"></i> Run Calculations & Auto-Remarks" button.</strong> This performs all necessary calculations (averages, positions, aggregates, divisions) and generates automated teacher/headteacher remarks. This step must be completed before generating final reports or summaries.</li>
-                        <li>You should see a success message once calculations are done.</li>
+                        <li>Select the Class, Year, and Term.</li>
+                        <li>Enter the "This Term Ended On" and "Next Term Begins On" dates.</li>
                     </ul>
                 </li>
-                <li>Once calculations are complete for a batch, you can use the other action buttons from "View Report Archives" (or often from `view_processed_data.php` as well):
+                <li>In the "Upload Marks File & Teacher Initials" section:
+                    <ul>
+                        <li>Under "1. Upload Marks Excel File", click "Choose File" (or similar, depending on your browser) and select your completed and saved Excel workbook. The label will update to show the selected class (e.g., "P1 Marks Excel File (.xlsx)").</li>
+                        <li>Under "2. Enter Teacher Initials", enter the initials for each subject teacher for the selected class. These initials will appear on the report cards. The relevant initial fields will appear based on the class you selected.</li>
+                    </ul>
+                </li>
+                <li>Click the "Process & Save Data" button at the bottom.</li>
+                <li>The system will validate the file and data. If successful, you will see a success message and a link to "View Details for Processed Batch ID: X". Click this link. If there are errors, they will be displayed on the Data Entry page; correct them in your Excel file and re-upload.</li>
+            </ol>
+
+            <h5><i class="fas fa-calculator me-2"></i>Step 4: Run Calculations & Generate Remarks</h5>
+             <ol>
+                <li>After successful upload and clicking the "View Details for Processed Batch ID: X" link (or navigating via "View Report Archives" -> "Process/View Data" for an existing batch), you will be on the specific batch processing page.</li>
+                <li>On this page, review the imported scores if needed.</li>
+                <li><strong>Crucially, click the "<i class="fas fa-calculator"></i> Run Calculations & Auto-Remarks" button.</strong> This performs all necessary calculations (averages, positions, aggregates, divisions) and generates automated teacher/headteacher remarks for each student. This step must be completed before generating final reports or summaries.</li>
+                <li>You should see a success message once calculations are done.</li>
+            </ol>
+
+            <h5><i class="fas fa-file-pdf me-2"></i>Step 5: View/Download Reports & Summaries</h5>
+            <ol>
+                <li>Once calculations are complete for a batch, you can use the action buttons available on the batch processing page or from the "View Report Archives" page:
                     <ul>
                         <li>"<i class="fas fa-file-alt"></i> View PDF": Opens the combined PDF report for all students in the batch in a new browser tab.</li>
-                        <li>"<i class="fas fa-file-pdf"></i> Download PDF": Downloads the combined PDF report.</li>
-                        <li>"<i class="fas fa-chart-bar"></i> Summary": Takes you to the `summary_sheet.php` for that batch.</li>
+                        <li>"<i class="fas fa-download"></i> Download PDF": Downloads the combined PDF report. (Note: Icon might vary based on actual implementation, `fa-file-pdf` is also common).</li>
+                        <li>"<i class="fas fa-chart-bar"></i> Summary Sheet": Takes you to the `summary_sheet.php` for that batch, displaying class performance analytics.</li>
                     </ul>
                 </li>
             </ol>
-
-            <h5><i class="fas fa-chart-pie me-2"></i>Summary Sheets</h5>
-            <ol>
-                <li>Navigate to "Summary Sheets" from the sidebar, or click the "Summary" button for a batch from "View Report Archives."</li>
-                <li>If navigating directly, select the desired processed batch from the dropdown and click "View Summary."</li>
-                <li>The page will display overall class performance, including charts and lists depending on the class level (P1-P3 or P4-P7).</li>
-                <li>Ensure calculations have been run for the batch for the summary to be accurate.</li>
-            </ol>
-            <!-- General Tips integrated or covered above -->
         </section>
 
-        <section id="new-features-docs" style="text-align: justify; padding-left: 15px; padding-right: 15px;">
-            <h3 class="section-title" style="text-align: center; display: block; width: 100%;">New Student Analytics Features</h3>
-
+        <section id="new-features-docs">
+            <h3 class="section-title">Student Analytics Features</h3>
             <div style="text-align: center; margin-bottom: 1.5rem;">
                  The following features provide deeper insights into student performance.
             </div>
@@ -210,91 +300,59 @@ date_default_timezone_set('Africa/Kampala'); // Or user's preferred timezone
             <p><strong>Purpose:</strong> This feature allows users to view a comprehensive summary of a student's academic performance across multiple terms and academic years. It helps in identifying trends and overall progress of the student over time.</p>
             <p><strong>Access:</strong> Navigate to "Student Analytics" from the main dashboard sidebar, then click on "Historical Performance".</p>
             <p><strong>Usage:</strong></p>
-            <ol style="margin-left: 20px;">
-                <li>Upon accessing the page, select a student from the provided dropdown list. This list includes all students for whom performance data has been processed.</li>
-                <li>Once a student is selected, the system will display a table detailing their key performance indicators for each recorded term. This includes:
-                    <ul>
-                        <li>For P1-P3 classes: Average Score, Total Score, and Class Position.</li>
-                        <li>For P4-P7 classes: Aggregate Points and Division.</li>
-                        <li>General remarks from the Class Teacher and Head Teacher for each term will also be shown.</li>
-                    </ul>
-                </li>
-                <li>Below the table, line charts will visualize performance trends if sufficient data (more than one term) is available:
-                    <ul>
-                        <li>A chart for P1-P3 average scores over time.</li>
-                        <li>A chart for P4-P7 aggregate points over time (note: for aggregates, a lower score indicates better performance, so the chart's Y-axis is typically reversed).</li>
-                    </ul>
-                </li>
+            <ol>
+                <li>Upon accessing the page, select a student from the provided dropdown list.</li>
+                <li>Once a student is selected, the system will display a table detailing their key performance indicators for each recorded term (e.g., Average Score, Total Score, Class Position for P1-P3; Aggregate Points, Division for P4-P7; general remarks).</li>
+                <li>Line charts may visualize performance trends if sufficient data is available.</li>
             </ol>
-            <p><em>This tool is invaluable for tracking long-term academic development and for discussions during parent-teacher meetings.</em></p>
-            <p style="font-style: italic; font-size: 0.9em;">Relevant File: <code>historical_performance.php</code>. Key Data Access Function: <code>getStudentHistoricalPerformance()</code>.</p>
+            <p><em>This tool is invaluable for tracking long-term academic development.</em></p>
 
             <h4 style="text-align: center; font-weight: bold; margin-top: 2rem;">2. Comparative Analysis</h4>
-            <p><strong>Purpose:</strong> This feature offers tools to conduct comparative studies of a student's performance. You can either compare their performance across different subjects within a single academic term or track their performance in a specific subject across several terms.</p>
+            <p><strong>Purpose:</strong> This feature offers tools to conduct comparative studies of a student's performance, either across different subjects within a single term or their performance in a specific subject across several terms.</p>
             <p><strong>Access:</strong> Navigate to "Student Analytics" from the main dashboard sidebar, then click on "Comparative Analysis".</p>
             <p><strong>Usage:</strong></p>
-            <ol style="margin-left: 20px;">
-                <li>First, select a student from the main dropdown list on the page.</li>
-                <li>After selecting a student, two analysis options will be available via tabs:
+            <ol>
+                <li>First, select a student from the main dropdown list.</li>
+                <li>Choose an analysis option via tabs:
                     <ul>
-                        <li><strong>Compare Subjects (Single Term):</strong>
-                            <ol type="a" style="margin-left: 20px;">
-                                <li>Select a specific "Term/Batch" for the chosen student from the subsequent dropdown.</li>
-                                <li>A table will then display the student’s Beginning of Term (B.O.T), Mid of Term (M.O.T), and End of Term (E.O.T) scores, along with their calculated grades for all subjects taken in that selected term.</li>
-                                <li>A bar chart will also be generated to visually compare the E.O.T scores across these subjects, making it easy to identify strengths and areas needing improvement.</li>
-                            </ol>
-                        </li>
-                        <li><strong>Track Subject (Across Terms):</strong>
-                            <ol type="a" style="margin-left: 20px;">
-                                <li>Select a specific "Subject" that the student has taken from the relevant dropdown menu.</li>
-                                <li>The system will then present a table showing the student’s B.O.T, M.O.T, and E.O.T scores, plus the E.O.T grade for that single subject across all terms for which data is available.</li>
-                                <li>A line chart will illustrate the trend of the student's E.O.T scores in this subject over time, highlighting improvement or areas of concern.</li>
-                            </ol>
-                        </li>
+                        <li><strong>Compare Subjects (Single Term):</strong> Select a term/batch. A table and bar chart will show subject scores for that term.</li>
+                        <li><strong>Track Subject (Across Terms):</strong> Select a subject. A table and line chart will show that subject's scores across all recorded terms.</li>
                     </ul>
                 </li>
             </ol>
-            <p><em>This analytical tool is designed to help educators and parents pinpoint specific academic patterns and make informed decisions.</em></p>
-            <p style="font-style: italic; font-size: 0.9em;">Relevant File: <code>comparative_analysis.php</code>. Key Data Access Functions: <code>getStudentScoresForBatchDetailed()</code>, <code>getStudentSubjectPerformanceAcrossTerms()</code>, <code>getStudentSubjectsForBatch()</code>. Grade calculations use <code>getGradeFromScoreUtil()</code>.</p>
+            <p><em>This analytical tool helps pinpoint specific academic patterns.</em></p>
         </section>
 
         <section id="troubleshooting">
-            <h3 class="section-title mt-4">Troubleshooting / Common Issues</h3>
+            <h3 class="section-title">Troubleshooting / Common Issues</h3>
             <ul>
                 <li><strong>Error during Excel Upload/Processing:</strong>
                     <ul>
-                        <li>Ensure your Excel file strictly follows the template format (Subject Name in A1, specific headers, ALL CAPS student names).</li>
-                        <li>Check for any non-numeric values in score columns where numbers are expected.</li>
-                        <li>Make sure file is `.xlsx` format.</li>
+                        <li>Ensure your Excel file strictly follows the downloaded template format (especially sheet names and headers in Row 1).</li>
+                        <li>Verify student names are in ALL CAPS.</li>
+                        <li>Check for any non-numeric values in score columns.</li>
+                        <li>Ensure the file is in `.xlsx` format.</li>
                     </ul>
                 </li>
                 <li><strong>Reports/Summaries are empty or show old data:</strong>
                     <ul>
-                        <li>Always ensure you have clicked "Run Calculations & Auto-Remarks" for the specific batch after importing marks. This is found via "View Report Archives" -> "Process/View Data".</li>
+                        <li>Always ensure you have clicked "Run Calculations & Auto-Remarks" for the specific batch after importing marks.</li>
                     </ul>
                 </li>
                 <li><strong>PDF Not Generating / Error in PDF:</strong>
                     <ul>
-                        <li>Confirm calculations were run.</li>
-                        <li>If errors persist, note the error message and contact system support/developer.</li>
-                    </ul>
-                </li>
-                <li><strong>Cannot find a Batch:</strong>
-                    <ul>
-                        <li>Use the filters in "View Report Archives". If still not found, it may not have been imported, or it was deleted.</li>
+                        <li>Confirm calculations were run. Note any error message and contact support if issues persist.</li>
                     </ul>
                 </li>
             </ul>
         </section>
 
         <section id="credits" class="credits">
-            <h3 class="section-title">Credits</h3>
+            <h3 class="section-title" style="text-align:center;">Credits</h3>
             <p>This system was designed and developed by:</p>
             <ul>
-                <li><strong>Peter Nuwahereza</strong> (nuwapeter2013@gmail.com)
-                    <ul><li><em>GitHub: [User to provide GitHub info if desired]</em></li></ul>
-                </li>
-                <li>with the assistance of <strong>(AI Agent)</strong>.</li> <!-- Removed "Jules" -->
+                <li><strong>Peter Nuwahereza</strong> (nuwapeter2013@gmail.com)</li>
+                <li>with the assistance of an AI Agent.</li>
             </ul>
             <p>We hope this system serves Maria Ow'embabazi Primary School effectively!</p>
         </section>

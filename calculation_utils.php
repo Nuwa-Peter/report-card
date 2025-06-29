@@ -82,22 +82,22 @@ if (!function_exists('generateClassTeacherRemarkUtil')) {
         if ($isP4_P7) {
             $division = $performanceData['p4p7_division'] ?? 'Ungraded';
             $aggregate = $performanceData['p4p7_aggregate_points'] ?? 0;
-            switch ($division) { // MODIFIED cases
-                case 'I': return ($aggregate <= 6) ? "Outstanding performance! A true star. Maintain this excellent standard and continue to inspire those around you." : "Excellent work! You are a dedicated and focused student. Keep aiming for the very top.";
-                case 'II': return ($aggregate >= 13 && $aggregate <= 15) ? "Very good effort, you are on the cusp of achieving a First Grade! A little more focused effort will get you there. Yours is a promising future!" : "Good performance. Continue to work hard and you can achieve even better results next term.";
-                case 'III': return "A fair performance this term. Consistent hard work and more concentration in class are essential for noticeable improvement.";
-                case 'IV': return "There is significant room for improvement. Please apply more dedicated effort to all your studies and seek help where needed.";
-                case 'U': return "This performance needs substantial improvement. Please seek guidance from your teachers and dedicate more time to consistent study.";
-                case 'X': return "Missed End of Term examinations. It's important to participate fully to assess your progress and learning.";
-                default: return "Performance requires more focused attention. Please concentrate on all subjects to achieve a commendable grade.";
+            switch ($division) {
+                case 'I': return ($aggregate <= 6) ? "Wonderful work! You are a star. Keep up this great effort." : "Excellent job! You worked hard and did very well. Keep it up!";
+                case 'II': return ($aggregate >= 13 && $aggregate <= 15) ? "Very good effort! You're close to the top. Keep trying your best!" : "Good job! Keep working hard to do even better next time.";
+                case 'III': return "Fair effort. Try to focus more in class to improve.";
+                case 'IV': return "You need to try harder. Ask for help if you need it.";
+                case 'U': return "Please work much harder and ask your teachers for help.";
+                case 'X': return "You missed some exams. It's important to do them to see how you are doing.";
+                default: return "Try to focus on all subjects to get better results.";
             }
-        } else {
+        } else { // P1-P3
             $average = $performanceData['p1p3_average_eot_score'] ?? 0;
-            if ($average >= 85) return "Excellent work this term! You are a shining example to your classmates with such wonderful results.";
-            if ($average >= 70) return "Very good performance. Keep up the commendable hard work and enthusiasm for learning!";
-            if ($average >= 60) return "Good effort shown. Continue to apply yourself diligently and you will see even more progress.";
-            if ($average >= 50) return "Satisfactory performance. With increased focus and consistent effort, you can achieve better results.";
-            return "More focus and consistent effort are needed to improve your grades. Please try harder next term and don't hesitate to ask for help.";
+            if ($average >= 85) return "Excellent work this term! You did wonderfully.";
+            if ($average >= 70) return "Very good job! Keep up the great work.";
+            if ($average >= 60) return "Good effort! Keep trying your best.";
+            if ($average >= 50) return "Nice try. Work a bit harder to do even better.";
+            return "Please try harder next term. Ask for help if you need it.";
         }
     }
 }
@@ -107,21 +107,21 @@ if (!function_exists('generateHeadTeacherRemarkUtil')) {
         if ($isP4_P7) {
             $division = $performanceData['p4p7_division'] ?? 'Ungraded';
             $aggregate = $performanceData['p4p7_aggregate_points'] ?? 0;
-            switch ($division) { // MODIFIED cases
-                case 'I': return ($aggregate <= 6) ? "An exemplary performance that brings great pride to the school. Continue to be a role model for your peers!" : "Congratulations on achieving a First Grade! Your hard work and dedication are highly commendable. Thank you for your efforts.";
-                case 'II': return ($aggregate >= 13 && $aggregate <= 15) ? "A very promising result! You clearly have the potential for the best First Grade. Keep striving for excellence with unwavering determination!" : "Well done on this Second Grade. Consistent effort and heeding your teachers' advice will certainly elevate you to greater heights. Add in more effort!";
-                case 'III': return "A fair result. The school encourages you to redouble your efforts and seek guidance when needed for a better division next term.";
-                case 'IV': return "Improvement is certainly needed. The school expects more dedication towards your academic work for a brighter future. Work harder.";
-                case 'U': return "This performance is below the school's expectations. Please commit to serious improvement with support from teachers and parents.";
-                case 'X': return "Examinations are a crucial part of the learning and assessment process. The school expects full participation in all academic activities.";
-                default: return "Please work diligently across all subjects to earn a commendable grade. The school is here to support your academic growth and success.";
+            switch ($division) {
+                case 'I': return ($aggregate <= 6) ? "Amazing work! The school is proud of you. Keep being a good example!" : "Well done on getting First Grade! Your hard work is great to see.";
+                case 'II': return ($aggregate >= 13 && $aggregate <= 15) ? "Great result! You can reach First Grade. Keep aiming high!" : "Good job on this Second Grade. Listen to your teachers to do even better.";
+                case 'III': return "A fair result. The school wants you to work harder for a better grade next time.";
+                case 'IV': return "You need to work harder. The school wants you to do well.";
+                case 'U': return "This needs to be much better. Ask for help from teachers and parents.";
+                case 'X': return "Exams are important. The school expects you to try your best in all school work.";
+                default: return "Please work hard in all subjects. The school is here to help you.";
             }
-        } else {
+        } else { // P1-P3
             $average = $performanceData['p1p3_average_eot_score'] ?? 0;
-            if ($average >= 85) return "Outstanding academic achievement! The school is very proud of your excellent efforts and results. Keep it up!";
-            if ($average >= 70) return "A very strong and commendable performance. Continue to apply yourself with such diligence and aim even higher. Well done.";
-            if ($average >= 50) return "A satisfactory result. Keep working hard to unlock your full potential; we believe in your ability to improve further.";
-            return "You are encouraged to improve your overall performance next term. Consistent effort and active participation make a significant difference. Add in more effort.";
+            if ($average >= 85) return "Wonderful job! The school is very proud of you. Keep it up!";
+            if ($average >= 70) return "Very good work! Keep trying hard and aim higher.";
+            if ($average >= 50) return "Good effort. Keep working hard, you can do even better."; // Covers 50-69
+            return "Please try to improve next term. Working hard in class helps a lot."; // Covers below 50
         }
     }
 }

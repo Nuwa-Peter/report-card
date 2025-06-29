@@ -40,6 +40,17 @@ function updateSubjectFields(selectedClass) {
     const commonSubjectInitials = document.querySelectorAll('.common-subject-initials');
     const p1p3SubjectInitials = document.querySelectorAll('.p1p3-subject-initials');
     const p4p7SubjectInitials = document.querySelectorAll('.p4p7-subject-initials');
+    const marksFileLabel = document.getElementById('marks_excel_file_label');
+    const defaultMarksFileLabelText = "Marks Excel File (.xlsx):";
+
+    // Update the main marks file label
+    if (marksFileLabel) {
+        if (selectedClass && selectedClass !== "") {
+            marksFileLabel.textContent = selectedClass + " " + defaultMarksFileLabelText;
+        } else {
+            marksFileLabel.textContent = defaultMarksFileLabelText;
+        }
+    }
 
     // Helper to set visibility and requirement for a group of teacher initial blocks
     function setInitialFields(elements, display, required) {

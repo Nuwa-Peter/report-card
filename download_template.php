@@ -1,5 +1,6 @@
 <?php
 ob_start(); // Start output buffering at the very beginning
+date_default_timezone_set('Africa/Kampala');
 
 if (!file_exists('vendor/autoload.php')) {
     if (ob_get_length()) ob_end_clean();

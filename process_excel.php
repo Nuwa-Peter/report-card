@@ -1,5 +1,7 @@
 <?php
 session_start();
+date_default_timezone_set('Africa/Kampala');
+
 // Ensure vendor/autoload.php exists
 if (!file_exists('vendor/autoload.php')) {
     if (headers_sent()) { die('CRITICAL ERROR: Headers already sent. Composer autoload missing.'); }
@@ -216,7 +218,7 @@ try {
 
         for ($row = $startRow; $row <= $highestRow; $row++) {
             $linValue = trim(strval($currentSheetObject->getCell('A' . $row)->getValue()));
-            $studentNameRaw = trim(strval($sheet->getCell('B' . $row)->getValue()));
+            $studentNameRaw = trim(strval($currentSheetObject->getCell('B' . $row)->getValue()));
 
             if (empty($studentNameRaw)) continue; // Skip if no student name
             $studentNameAllCaps = strtoupper($studentNameRaw);

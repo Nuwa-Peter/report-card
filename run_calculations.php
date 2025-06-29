@@ -1,5 +1,7 @@
 <?php
 session_start();
+date_default_timezone_set('Africa/Kampala');
+
 require_once 'db_connection.php';
 require_once 'dal.php';
 require_once 'calculation_utils.php';
@@ -34,14 +36,15 @@ if ($isP4_P7) {
 }
 
 $gradingScalePointsMap = ['D1'=>1, 'D2'=>2, 'C3'=>3, 'C4'=>4, 'C5'=>5, 'C6'=>6, 'P7'=>7, 'P8'=>8, 'F9'=>9, 'N/A'=>0];
+// Simplified remarks for subject EOT scores
 $remarksScoreMap = [
-    90 => 'Excellent',    // For scores 90-100
-    80 => 'Very Good',    // For scores 80-89
-    70 => 'Good',         // For scores 70-79
-    60 => 'Fair',         // For scores 60-69
-    50 => 'Tried',        // For scores 50-59
-    0  => 'Improve',      // For scores 0-49 (Note: key is 0, covers 0-49)
-    'N/A' => 'N/A'       // For non-numeric scores
+    90 => 'Excellent work!',        // For scores 90-100
+    80 => 'Very good work!',       // For scores 80-89
+    70 => 'Good work.',            // For scores 70-79
+    60 => 'Satisfactory work.',    // For scores 60-69
+    50 => 'Making progress.',      // For scores 50-59
+    0  => 'Needs more practice.',  // For scores 0-49
+    'N/A' => 'N/A'                 // For non-numeric scores
 ];
 
 $studentsRawDataFromDB = getStudentsWithScoresForBatch($pdo, $batch_id);

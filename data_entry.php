@@ -100,14 +100,19 @@ if(isset($_SESSION['report_data']) && !isset($_SESSION['last_processed_batch_id'
         <!-- New Card for Template Downloads -->
         <div class="row justify-content-center"><div class="col-lg-9 mx-auto">
             <div class="card mb-4">
-                <h5 class="card-header card-header-custom text-center">Download Marks Entry Templates</h5>
-                <div class="card-body">
-                    <p class="text-muted text-center mb-3">Download the appropriate Excel template for the class level. Each template contains multiple sheets, one for each subject.</p>
-                    <div class="d-flex justify-content-center gap-2">
-                        <a href="download_template.php?type=lower" class="btn btn-info"><i class="fas fa-file-excel"></i> Download Lower Primary Template (P1-P3)</a>
-                        <a href="download_template.php?type=upper" class="btn btn-success"><i class="fas fa-file-excel"></i> Download Upper Primary Template (P4-P7)</a>
+                <h5 class="card-header card-header-custom text-center">Download Marks Entry Template</h5>
+                <div class="card-body text-center"> {/* Added text-center to card-body for the button group */}
+                    <p class="text-muted mb-3">Download the appropriate Excel template for the class level. Each template contains multiple sheets, one for each subject.</p>
+                    <div class="dropdown d-inline-block"> {/* d-inline-block to allow text-center to work */}
+                        <button class="btn btn-primary dropdown-toggle" type="button" id="downloadTemplateDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-file-excel"></i> Select Template to Download
+                        </button>
+                        <ul class="dropdown-menu" aria-labelledby="downloadTemplateDropdown">
+                            <li><a class="dropdown-item" href="download_template.php?type=lower"><i class="fas fa-child"></i> Lower Primary (P1-P3)</a></li>
+                            <li><a class="dropdown-item" href="download_template.php?type=upper"><i class="fas fa-user-graduate"></i> Upper Primary (P4-P7)</a></li>
+                        </ul>
                     </div>
-                     <p class="text-muted text-center mt-3"><small>Ensure you have Microsoft Excel or a compatible spreadsheet program to open and edit these files.</small></p>
+                    <p class="text-muted mt-3"><small>Ensure you have Microsoft Excel or a compatible spreadsheet program to open and edit these files.</small></p>
                 </div>
             </div>
         </div></div>
@@ -119,7 +124,7 @@ if(isset($_SESSION['report_data']) && !isset($_SESSION['last_processed_batch_id'
             <div class="card mb-4">
                 <h5 class="card-header card-header-custom">School & Term Information</h5>
                 <div class="card-body">
-                    <div class="row mb-3 justify-content-center mt-3"> {/* Added mt-3 for spacing after header */}
+                    <div class="row mb-3 justify-content-center mt-3">
                         <div class="col-md-3">
                             <label for="class_selection" class="form-label">Class:</label>
                     <select class="form-select" id="class_selection" name="class_selection" required>
@@ -172,19 +177,18 @@ if(isset($_SESSION['report_data']) && !isset($_SESSION['last_processed_batch_id'
                 <div class="card-body">
                     <h6 class="mt-3 text-center">1. Upload Marks Excel File</h6>
                     <p class="text-muted text-center">Upload a single .xlsx file containing all subject marks in their respective sheets. Download the appropriate template above if you haven't already.</p>
-                    <div class="row justify-content-center mb-4"> {/* Added mb-4 for spacing */}
+                    <div class="row justify-content-center mb-4">
                         <div class="col-md-8">
-                             <label for="marks_excel_file" class="form-label">Marks Excel File (.xlsx):</label>
+                             <label for="marks_excel_file" class="form-label" id="marks_excel_file_label">Marks Excel File (.xlsx):</label>
                              <input type="file" class="form-control" id="marks_excel_file" name="marks_excel_file" required accept=".xlsx">
                         </div>
                     </div>
 
-                    <hr> {/* Visual separator */}
+                    <hr>
 
                     <h6 class="mt-4 text-center">2. Enter Teacher Initials</h6>
                     <p class="text-muted text-center">Enter teacher initials for each subject taught in the selected class. These will appear on the report cards.</p>
 
-                    {/* Common Subject Initials */}
                     <div class="row mb-2 subject-initials-row common-subject-initials justify-content-center" id="english-initials-block">
                         <div class="col-md-4 text-end"><label for="english_initials" class="form-label">English Teacher Initials:</label></div>
                         <div class="col-md-4"><input type="text" class="form-control" id="english_initials" name="teacher_initials[english]" placeholder="e.g., J.D." value="<?php echo htmlspecialchars($current_teacher_initials_for_session['english'] ?? ''); ?>"></div>
@@ -200,15 +204,15 @@ if(isset($_SESSION['report_data']) && !isset($_SESSION['last_processed_batch_id'
                         <div class="col-md-4"><input type="text" class="form-control" id="re_initials" name="teacher_initials[re]" placeholder="e.g., S.P." value="<?php echo htmlspecialchars($current_teacher_initials_for_session['re'] ?? ''); ?>"></div>
                     </div>
                     <div class="row mb-2 subject-initials-row p1p3-subject-initials justify-content-center" id="lit1-initials-block" style="display:none;">
-                        <div class="col-md-4 text-end"><label for="lit1_initials" class="form-label">Literacy I Initials:</label></div>
+                        <div class="col-md-4 text-end"><label for="lit1_initials" class="form-label">Literacy I Teacher Initials:</label></div>
                         <div class="col-md-4"><input type="text" class="form-control" id="lit1_initials" name="teacher_initials[lit1]" placeholder="e.g., K.L." value="<?php echo htmlspecialchars($current_teacher_initials_for_session['lit1'] ?? ''); ?>"></div>
                     </div>
                     <div class="row mb-2 subject-initials-row p1p3-subject-initials justify-content-center" id="lit2-initials-block" style="display:none;">
-                        <div class="col-md-4 text-end"><label for="lit2_initials" class="form-label">Literacy II Initials:</label></div>
+                        <div class="col-md-4 text-end"><label for="lit2_initials" class="form-label">Literacy II Teacher Initials:</label></div>
                         <div class="col-md-4"><input type="text" class="form-control" id="lit2_initials" name="teacher_initials[lit2]" placeholder="e.g., M.N." value="<?php echo htmlspecialchars($current_teacher_initials_for_session['lit2'] ?? ''); ?>"></div>
                     </div>
                     <div class="row mb-2 subject-initials-row p1p3-subject-initials justify-content-center" id="local_lang-initials-block" style="display:none;">
-                        <div class="col-md-4 text-end"><label for="local_lang_initials" class="form-label">Local Language Initials:</label></div>
+                        <div class="col-md-4 text-end"><label for="local_lang_initials" class="form-label">Local Language Teacher Initials:</label></div>
                         <div class="col-md-4"><input type="text" class="form-control" id="local_lang_initials" name="teacher_initials[local_lang]" placeholder="e.g., O.P." value="<?php echo htmlspecialchars($current_teacher_initials_for_session['local_lang'] ?? ''); ?>"></div>
                     </div>
 
@@ -222,29 +226,16 @@ if(isset($_SESSION['report_data']) && !isset($_SESSION['last_processed_batch_id'
                         <div class="col-md-4"><input type="text" class="form-control" id="sst_initials" name="teacher_initials[sst]" placeholder="e.g., F.G." value="<?php echo htmlspecialchars($current_teacher_initials_for_session['sst'] ?? ''); ?>"></div>
                     </div>
                     <div class="row mb-3 subject-initials-row p4p7-subject-initials justify-content-center" id="kiswahili-initials-block" style="display:none;">
-                        <div class="col-md-4 text-end"><label for="kiswahili_initials" class="form-label">Kiswahili Teacher Initials <small class='text-muted'>(Optional)</small>:</label></div>
+                        <div class="col-md-4 text-end"><label for="kiswahili_initials" class="form-label">Kiswahili Teacher Initials:</label></div>
                         <div class="col-md-4"><input type="text" class="form-control" id="kiswahili_initials" name="teacher_initials[kiswahili]" placeholder="e.g., H.I." value="<?php echo htmlspecialchars($current_teacher_initials_for_session['kiswahili'] ?? ''); ?>"></div>
                     </div>
                 </div>
             </div> <!-- Close Unified File Upload & Initials Card's card-body -->
             </div> <!-- Close Unified File Upload & Initials Card -->
 
-            <div class="card mb-4">
-                <h5 class="card-header card-header-custom">General Remarks (Optional)</h5>
-                <div class="card-body">
-                    <p class="text-muted text-center mt-2">These remarks will appear on all report cards for this batch. Auto-generated remarks based on performance will be implemented later.</p>
-                    <div class="mb-3 mt-3"> {/* Added mt-3 for spacing */}
-                        <label for="class_teacher_remarks" class="form-label">Class Teacher's General Remark:</label>
-                        <textarea class="form-control" id="class_teacher_remarks" name="class_teacher_remarks" rows="3" placeholder="e.g., Good work this term, keep it up!"></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label for="head_teacher_remarks" class="form-label">Head Teacher's General Remark:</label>
-                        <textarea class="form-control" id="head_teacher_remarks" name="head_teacher_remarks" rows="3" placeholder="e.g., A promising term for all students."></textarea>
-                    </div>
-                </div>
-            </div> <!-- Close General Remarks Card -->
+            <!-- General Remarks Card Removed -->
 
-            <div class="d-grid gap-2 col-md-6 mx-auto mt-4 mb-5"> {/* Ensure responsiveness on smaller screens with col-md-6 */}
+            <div class="d-grid gap-2 col-md-6 mx-auto mt-4 mb-5">
                 <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-cogs"></i> Process & Save Data</button>
             </div>
             </div></div> <!-- Close Overall Form Width Wrapper -->
