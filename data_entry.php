@@ -101,9 +101,9 @@ if(isset($_SESSION['report_data']) && !isset($_SESSION['last_processed_batch_id'
         <div class="row justify-content-center"><div class="col-lg-9 mx-auto">
             <div class="card mb-4">
                 <h5 class="card-header card-header-custom text-center">Download Marks Entry Template</h5>
-                <div class="card-body text-center"> {/* Added text-center to card-body for the button group */}
+                <div class="card-body text-center">
                     <p class="text-muted mb-3">Download the appropriate Excel template for the class level. Each template contains multiple sheets, one for each subject.</p>
-                    <div class="dropdown d-inline-block"> {/* d-inline-block to allow text-center to work */}
+                    <div class="dropdown d-inline-block">
                         <button class="btn btn-primary dropdown-toggle" type="button" id="downloadTemplateDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="fas fa-file-excel"></i> Select Template to Download
                         </button>
