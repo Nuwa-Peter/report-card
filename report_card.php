@@ -303,6 +303,58 @@ $teacherInitials = $teacherInitials ?? ($_SESSION['current_teacher_initials'] ??
                         <td></td> <?php // Empty cell for Subject Term Average column ?>
                         <td colspan="2"></td>
                     </tr>
+                    <?php // Adding new distinct rows for OVERALL Average and Position as per interpretation ?>
+                    <tr class="summary-row">
+                        <td><strong>OVERALL AVERAGE</strong></td>
+                        <td><strong><?php echo $p1p3OverallAverageBot; ?></strong></td>
+                        <td><strong><?php echo $p1p3OverallAverageMot; ?></strong></td>
+                        <td><strong><?php echo $p1p3AverageEOT; ?></strong></td>
+                        <td></td> <?php // Empty cell for Subject Term Average column ?>
+                        <td colspan="2"></td> <?php // Colspan for Remarks and Initials ?>
+                    </tr>
+                    <tr class="summary-row">
+                        <td><strong>OVERALL POSITION</strong></td>
+                        <td><strong><?php echo $p1p3PositionTotalBot; ?></strong></td>
+                        <td><strong><?php echo $p1p3PositionTotalMot; ?></strong></td>
+                        <td><strong><?php echo $p1p3PositionTotalEot; ?></strong></td>
+                        <td></td> <?php // Empty cell for Subject Term Average column ?>
+                        <td colspan="2"></td>
+                    </tr>
+                <?php endif; ?>
+
+                <?php if ($isP4_P7): ?>
+                    <?php
+                        // Placeholder variables for BOT and MOT aggregates and divisions.
+                        // These might need to be fetched or made available from the backend.
+                        // For EOT, we use existing variables.
+                        $p4p7_aggregate_bot = $studentSummaryData['p4p7_aggregate_bot_score'] ?? 'N/A';
+                        $p4p7_aggregate_mot = $studentSummaryData['p4p7_aggregate_mot_score'] ?? 'N/A';
+                        // $p4p7Aggregate is already defined for EOT aggregate
+
+                        $p4p7_division_bot = $studentSummaryData['p4p7_division_bot'] ?? 'N/A';
+                        $p4p7_division_mot = $studentSummaryData['p4p7_division_mot'] ?? 'N/A';
+                        // $p4p7Division is already defined for EOT division
+                    ?>
+                    <tr class="summary-row">
+                        <td><strong>AGGREGATE</strong></td>
+                        <td><strong><?php echo htmlspecialchars($p4p7_aggregate_bot); ?></strong></td>
+                        <td></td> <?php // Empty cell for BOT Grade ?>
+                        <td><strong><?php echo htmlspecialchars($p4p7_aggregate_mot); ?></strong></td>
+                        <td></td> <?php // Empty cell for MOT Grade ?>
+                        <td><strong><?php echo $p4p7Aggregate; // Already htmlspecialchar'd ?></strong></td>
+                        <td></td> <?php // Empty cell for EOT Grade ?>
+                        <td colspan="2"></td> <?php // Colspan for Remarks and Initials ?>
+                    </tr>
+                    <tr class="summary-row">
+                        <td><strong>DIVISION</strong></td>
+                        <td><strong><?php echo htmlspecialchars($p4p7_division_bot); ?></strong></td>
+                        <td></td> <?php // Empty cell for BOT Grade ?>
+                        <td><strong><?php echo htmlspecialchars($p4p7_division_mot); ?></strong></td>
+                        <td></td> <?php // Empty cell for MOT Grade ?>
+                        <td><strong><?php echo $p4p7Division; // Already htmlspecialchar'd ?></strong></td>
+                        <td></td> <?php // Empty cell for EOT Grade ?>
+                        <td colspan="2"></td> <?php // Colspan for Remarks and Initials ?>
+                    </tr>
                 <?php endif; ?>
             </tbody>
         </table>
