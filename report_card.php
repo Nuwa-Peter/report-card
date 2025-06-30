@@ -303,23 +303,6 @@ $teacherInitials = $teacherInitials ?? ($_SESSION['current_teacher_initials'] ??
                         <td></td> <?php // Empty cell for Subject Term Average column ?>
                         <td colspan="2"></td>
                     </tr>
-                    <?php // Adding new distinct rows for OVERALL Average and Position as per interpretation ?>
-                    <tr class="summary-row">
-                        <td><strong>OVERALL AVERAGE</strong></td>
-                        <td><strong><?php echo $p1p3OverallAverageBot; ?></strong></td>
-                        <td><strong><?php echo $p1p3OverallAverageMot; ?></strong></td>
-                        <td><strong><?php echo $p1p3AverageEOT; ?></strong></td>
-                        <td></td> <?php // Empty cell for Subject Term Average column ?>
-                        <td colspan="2"></td> <?php // Colspan for Remarks and Initials ?>
-                    </tr>
-                    <tr class="summary-row">
-                        <td><strong>OVERALL POSITION</strong></td>
-                        <td><strong><?php echo $p1p3PositionTotalBot; ?></strong></td>
-                        <td><strong><?php echo $p1p3PositionTotalMot; ?></strong></td>
-                        <td><strong><?php echo $p1p3PositionTotalEot; ?></strong></td>
-                        <td></td> <?php // Empty cell for Subject Term Average column ?>
-                        <td colspan="2"></td>
-                    </tr>
                 <?php endif; ?>
 
                 <?php if ($isP4_P7): ?>
@@ -337,22 +320,22 @@ $teacherInitials = $teacherInitials ?? ($_SESSION['current_teacher_initials'] ??
                     ?>
                     <tr class="summary-row">
                         <td><strong>AGGREGATE</strong></td>
+                        <td></td> <?php // Empty cell for BOT Score ?>
                         <td><strong><?php echo htmlspecialchars($p4p7_aggregate_bot); ?></strong></td>
-                        <td></td> <?php // Empty cell for BOT Grade ?>
+                        <td></td> <?php // Empty cell for MOT Score ?>
                         <td><strong><?php echo htmlspecialchars($p4p7_aggregate_mot); ?></strong></td>
-                        <td></td> <?php // Empty cell for MOT Grade ?>
+                        <td></td> <?php // Empty cell for EOT Score ?>
                         <td><strong><?php echo $p4p7Aggregate; // Already htmlspecialchar'd ?></strong></td>
-                        <td></td> <?php // Empty cell for EOT Grade ?>
                         <td colspan="2"></td> <?php // Colspan for Remarks and Initials ?>
                     </tr>
                     <tr class="summary-row">
                         <td><strong>DIVISION</strong></td>
+                        <td></td> <?php // Empty cell for BOT Score ?>
                         <td><strong><?php echo htmlspecialchars($p4p7_division_bot); ?></strong></td>
-                        <td></td> <?php // Empty cell for BOT Grade ?>
+                        <td></td> <?php // Empty cell for MOT Score ?>
                         <td><strong><?php echo htmlspecialchars($p4p7_division_mot); ?></strong></td>
-                        <td></td> <?php // Empty cell for MOT Grade ?>
+                        <td></td> <?php // Empty cell for EOT Score ?>
                         <td><strong><?php echo $p4p7Division; // Already htmlspecialchar'd ?></strong></td>
-                        <td></td> <?php // Empty cell for EOT Grade ?>
                         <td colspan="2"></td> <?php // Colspan for Remarks and Initials ?>
                     </tr>
                 <?php endif; ?>
