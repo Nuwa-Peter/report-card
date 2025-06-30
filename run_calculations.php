@@ -69,7 +69,12 @@ try {
             'p1p3_position_total_eot' => null,
             // Initialize new fields for P1-P3 overall BOT/MOT averages
             'p1p3_average_bot_score' => null,
-            'p1p3_average_mot_score' => null
+            'p1p3_average_mot_score' => null,
+            // Initialize new fields for P4-P7 BOT/MOT aggregates & divisions
+            'p4p7_aggregate_bot_score' => null,
+            'p4p7_division_bot' => null,
+            'p4p7_aggregate_mot_score' => null,
+            'p4p7_division_mot' => null
         ];
 
         $p1p3StudentTotalBot = 0; $p1p3SubjectsWithBot = 0;
@@ -133,10 +138,23 @@ try {
         ];
 
         if ($isP4_P7) {
-            $p4p7_results = calculateP4P7OverallPerformanceUtil($currentStudentSubjectsEnriched, $coreSubjectKeysP4_P7, $gradingScalePointsMap);
-            $summaryDataForDB['p4p7_aggregate_points'] = $p4p7_results['p4p7_aggregate_points'];
-            $summaryDataForDB['p4p7_division'] = $p4p7_results['p4p7_division'];
-            $studentPerformanceInputForOverallRemarks = $p4p7_results;
+            // Calculate BOT aggregates and division
+            $p4p7_bot_results = calculateP4P7_BOT_OverallPerformanceUtil($currentStudentSubjectsEnriched, $coreSubjectKeysP4_P7, $gradingScalePointsMap);
+            $summaryDataForDB['p4p7_aggregate_bot_score'] = $p4p7_bot_results['p4p7_aggregate_bot_score'];
+            $summaryDataForDB['p4p7_division_bot'] = $p4p7_bot_results['p4p7_division_bot'];
+
+            // Calculate MOT aggregates and division
+            $p4p7_mot_results = calculateP4P7_MOT_OverallPerformanceUtil($currentStudentSubjectsEnriched, $coreSubjectKeysP4_P7, $gradingScalePointsMap);
+            $summaryDataForDB['p4p7_aggregate_mot_score'] = $p4p7_mot_results['p4p7_aggregate_mot_score'];
+            $summaryDataForDB['p4p7_division_mot'] = $p4p7_mot_results['p4p7_division_mot'];
+
+            // Calculate EOT aggregates and division (existing logic)
+            $p4p7_eot_results = calculateP4P7OverallPerformanceUtil($currentStudentSubjectsEnriched, $coreSubjectKeysP4_P7, $gradingScalePointsMap);
+            $summaryDataForDB['p4p7_aggregate_points'] = $p4p7_eot_results['p4p7_aggregate_points'];
+            $summaryDataForDB['p4p7_division'] = $p4p7_eot_results['p4p7_division'];
+
+            // For remarks, EOT performance is primary
+            $studentPerformanceInputForOverallRemarks = $p4p7_eot_results;
         } elseif ($isP1_P3) {
             $summaryDataForDB['p1p3_total_bot_score'] = $p1p3StudentTotalBot;
             $summaryDataForDB['p1p3_average_bot_score'] = ($p1p3SubjectsWithBot > 0) ? round($p1p3StudentTotalBot / $p1p3SubjectsWithBot, 2) : 0; // NEW

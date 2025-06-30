@@ -17,6 +17,82 @@ if (!function_exists('getGradeFromScoreUtil')) {
     }
 }
 
+if (!function_exists('calculateP4P7_BOT_OverallPerformanceUtil')) {
+    // Calculates BOT aggregate points and division for P4-P7
+    function calculateP4P7_BOT_OverallPerformanceUtil($studentSubjectsDataWithScores, $coreSubjectKeys, $gradingScalePointsMap) {
+        $aggregatePoints = 0;
+        $coreBOTMissingOrInvalidCount = 0;
+        $validCoreBOTScoresExist = false;
+
+        if (empty($gradingScalePointsMap)) { // Fallback, though caller should provide it.
+            $gradingScalePointsMap = ['D1'=>1, 'D2'=>2, 'C3'=>3, 'C4'=>4, 'C5'=>5, 'C6'=>6, 'P7'=>7, 'P8'=>8, 'F9'=>9, 'N/A'=>0];
+        }
+
+        foreach ($coreSubjectKeys as $coreSubKey) {
+            $subjectInfo = $studentSubjectsDataWithScores[$coreSubKey] ?? null;
+            // Use bot_score for BOT calculations
+            if ($subjectInfo && isset($subjectInfo['bot_score']) && $subjectInfo['bot_score'] !== 'N/A' && is_numeric($subjectInfo['bot_score'])) {
+                $validCoreBOTScoresExist = true;
+                $botGrade = getGradeFromScoreUtil($subjectInfo['bot_score']);
+                $aggregatePoints += getPointsFromGradeUtil($botGrade, $gradingScalePointsMap);
+            } else {
+                $coreBOTMissingOrInvalidCount++;
+            }
+        }
+
+        if (!$validCoreBOTScoresExist && $coreBOTMissingOrInvalidCount === count($coreSubjectKeys)) {
+            return ['p4p7_aggregate_bot_score' => 0, 'p4p7_division_bot' => 'X'];
+        }
+
+        $division = 'Ungraded';
+        if ($aggregatePoints >= 35 && $aggregatePoints <= 36) $division = 'U';
+        else if ($aggregatePoints >= 30 && $aggregatePoints <= 34) $division = 'IV';
+        else if ($aggregatePoints >= 24 && $aggregatePoints <= 29) $division = 'III';
+        else if ($aggregatePoints >= 13 && $aggregatePoints <= 23) $division = 'II';
+        else if ($aggregatePoints >= 4 && $aggregatePoints <= 12) $division = 'I';
+
+        return ['p4p7_aggregate_bot_score' => $aggregatePoints, 'p4p7_division_bot' => $division];
+    }
+}
+
+if (!function_exists('calculateP4P7_MOT_OverallPerformanceUtil')) {
+    // Calculates MOT aggregate points and division for P4-P7
+    function calculateP4P7_MOT_OverallPerformanceUtil($studentSubjectsDataWithScores, $coreSubjectKeys, $gradingScalePointsMap) {
+        $aggregatePoints = 0;
+        $coreMOTMissingOrInvalidCount = 0;
+        $validCoreMOTScoresExist = false;
+
+        if (empty($gradingScalePointsMap)) { // Fallback, though caller should provide it.
+            $gradingScalePointsMap = ['D1'=>1, 'D2'=>2, 'C3'=>3, 'C4'=>4, 'C5'=>5, 'C6'=>6, 'P7'=>7, 'P8'=>8, 'F9'=>9, 'N/A'=>0];
+        }
+
+        foreach ($coreSubjectKeys as $coreSubKey) {
+            $subjectInfo = $studentSubjectsDataWithScores[$coreSubKey] ?? null;
+            // Use mot_score for MOT calculations
+            if ($subjectInfo && isset($subjectInfo['mot_score']) && $subjectInfo['mot_score'] !== 'N/A' && is_numeric($subjectInfo['mot_score'])) {
+                $validCoreMOTScoresExist = true;
+                $motGrade = getGradeFromScoreUtil($subjectInfo['mot_score']);
+                $aggregatePoints += getPointsFromGradeUtil($motGrade, $gradingScalePointsMap);
+            } else {
+                $coreMOTMissingOrInvalidCount++;
+            }
+        }
+
+        if (!$validCoreMOTScoresExist && $coreMOTMissingOrInvalidCount === count($coreSubjectKeys)) {
+            return ['p4p7_aggregate_mot_score' => 0, 'p4p7_division_mot' => 'X'];
+        }
+
+        $division = 'Ungraded';
+        if ($aggregatePoints >= 35 && $aggregatePoints <= 36) $division = 'U';
+        else if ($aggregatePoints >= 30 && $aggregatePoints <= 34) $division = 'IV';
+        else if ($aggregatePoints >= 24 && $aggregatePoints <= 29) $division = 'III';
+        else if ($aggregatePoints >= 13 && $aggregatePoints <= 23) $division = 'II';
+        else if ($aggregatePoints >= 4 && $aggregatePoints <= 12) $division = 'I';
+
+        return ['p4p7_aggregate_mot_score' => $aggregatePoints, 'p4p7_division_mot' => $division];
+    }
+}
+
 if (!function_exists('getPointsFromGradeUtil')) {
     function getPointsFromGradeUtil($grade, $gradingScalePointsMap) {
         if ($grade === 'N/A' && !isset($gradingScalePointsMap['N/A'])) return 0;

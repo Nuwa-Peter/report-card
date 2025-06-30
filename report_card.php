@@ -173,7 +173,7 @@ $teacherInitials = $teacherInitials ?? ($_SESSION['current_teacher_initials'] ??
             display: block;
             margin-bottom: 1mm;
             font-weight: bold;
-            font-size: 11pt; /* Remains 11pt */
+            font-size: 10pt; /* Reduced from 11pt */
         }
         .grading-scale-section-p4p7 .scale-container {
             display: inline-block;
@@ -188,9 +188,13 @@ $teacherInitials = $teacherInitials ?? ($_SESSION['current_teacher_initials'] ??
             border: 1px solid #eee;
             padding: 0.5mm 1mm;
             border-radius: 3px;
-            font-size: 11pt; /* Remains 11pt */
+            font-size: 10pt; /* Reduced from 11pt */
         }
         .grading-scale-section-p4p7 .scale-item strong {font-weight:bold; display:inline;}
+        .results-table.p1p3-table td,
+        .results-table.p1p3-table th {
+            font-size: 9pt; /* Increased from base 8pt for P1-P3 table */
+        }
         .footer { text-align: center; font-size: 9.5pt; margin-top: 4mm; border-top: 1px solid #000; padding-top: 1.5mm; }
         .footer i { font-style: italic; font-size:13pt; } /* Remains 13pt */
         @media print {
@@ -236,7 +240,7 @@ $teacherInitials = $teacherInitials ?? ($_SESSION['current_teacher_initials'] ??
         </div>
         <?php endif; ?>
 
-        <table class="results-table">
+        <table class="results-table <?php if ($isP1_P3) echo 'p1p3-table'; ?>">
             <thead>
                 <tr>
                     <th>SUBJECT</th>
