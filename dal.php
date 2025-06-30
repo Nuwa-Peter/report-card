@@ -145,7 +145,12 @@ function saveStudentReportSummary(PDO $pdo, array $summaryData): bool {
         'p1p3_position_total_eot',
         // ADDED/VERIFY New fields for P1-P3 overall BOT/MOT averages
         'p1p3_average_bot_score',
-        'p1p3_average_mot_score'
+        'p1p3_average_mot_score',
+        // ADD P4-P7 BOT/MOT fields
+        'p4p7_aggregate_bot_score',
+        'p4p7_division_bot',
+        'p4p7_aggregate_mot_score',
+        'p4p7_division_mot'
     ];
 
     $dataToSave = [];
