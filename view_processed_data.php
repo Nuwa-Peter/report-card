@@ -167,8 +167,13 @@ $subjectDisplayNames = [
             unset($_SESSION['error_message']);
         }
         if (isset($_SESSION['success_message']) && !empty($_SESSION['success_message'])) {
-            echo '<div class="alert alert-success" role="alert">' . htmlspecialchars($_SESSION['success_message']) . '</div>';
+            // Add the flash-alert-red class for the animation
+            echo '<div class="alert alert-success flash-alert-red" role="alert">' . htmlspecialchars($_SESSION['success_message']) . '</div>';
             unset($_SESSION['success_message']);
+        }
+        if (isset($_SESSION['info_message']) && !empty($_SESSION['info_message'])) { // Also handle info message just in case
+            echo '<div class="alert alert-info" role="alert">' . htmlspecialchars($_SESSION['info_message']) . '</div>';
+            unset($_SESSION['info_message']);
         }
         ?>
 

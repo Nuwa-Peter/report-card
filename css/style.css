@@ -69,3 +69,20 @@ footer {
    .report-card-container h1 { ... }
    For now, the inline styles in report_card.php are sufficient for mPDF.
 */
+
+/* Flashing animation for alerts after changes */
+@keyframes flash-red-emphasis {
+    0%, 100% {
+        box-shadow: 0 0 5px rgba(220, 53, 69, 0); /* Red, transparent */
+    }
+    50% {
+        box-shadow: 0 0 15px 5px rgba(220, 53, 69, 0.7); /* Red, more visible */
+    }
+}
+
+.flash-alert-red {
+    animation-name: flash-red-emphasis;
+    animation-duration: 0.7s; /* Speed of one flash cycle */
+    animation-iteration-count: 3; /* Flash 3 times */
+    animation-timing-function: ease-in-out;
+}
