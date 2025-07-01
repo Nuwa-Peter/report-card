@@ -451,28 +451,46 @@ $subjectDisplayNames = [
 
     <script>
         // Pass unique subject codes and names from PHP to JavaScript
-        const batchSubjects = <?php echo json_encode(array_map(function($code, $name) {
-            // Attempt to get subject_id. This assumes $studentsWithScores is populated.
-            // A more robust way might be to query subject IDs separately if needed universally.
-            $subject_id = null;
-            if (!empty($studentsWithScores)) {
-                foreach ($studentsWithScores as $student) {
-                    if (isset($student['subjects'][$code]['subject_id'])) {
-                        $subject_id = $student['subjects'][$code]['subject_id'];
-                        break;
+        const batchSubjects = <?php
+            // Ensure $pdo and $studentsWithScores are accessible in the anonymous function
+            global $pdo, $studentsWithScores, $uniqueSubjectCodesInBatch; // Make them available if not already in local scope
+                                                                      // Or better, ensure they are passed if this script is included within a function.
+                                                                      // Assuming they are in global scope or correctly passed to this script part.
+
+            if (!isset($uniqueSubjectCodesInBatch) || !is_array($uniqueSubjectCodesInBatch)) {
+                $uniqueSubjectCodesInBatch = []; // Ensure it's an array to prevent errors
+            }
+            if (!isset($studentsWithScores) || !is_array($studentsWithScores)) {
+                $studentsWithScores = []; // Ensure it's an array
+            }
+
+
+            echo json_encode(array_map(function($code, $name) use ($pdo, $studentsWithScores) {
+                $subject_id = null;
+                if (!empty($studentsWithScores)) {
+                    foreach ($studentsWithScores as $student) {
+                        if (isset($student['subjects'][$code]['subject_id'])) {
+                            $subject_id = $student['subjects'][$code]['subject_id'];
+                            break;
+                        }
                     }
                 }
-            }
-            // If no subject_id found (e.g. empty batch initially), try to get it from `subjects` table by code
-            if (!$subject_id) {
-                 $stmt = $pdo->prepare("SELECT id FROM subjects WHERE subject_code = :code");
-                 $stmt->execute([':code' => $code]);
-                 $subject_id = $stmt->fetchColumn();
-            }
-
-            return ['code' => $code, 'name' => $name, 'id' => $subject_id];
-        }, array_keys($uniqueSubjectCodesInBatch), array_values($uniqueSubjectCodesInBatch))); ?>;
-
+                // If no subject_id found through existing student scores (e.g. empty batch or new subject for batch),
+                // try to get it from the `subjects` table by code.
+                if (!$subject_id && $pdo) { // Check if $pdo is available
+                    try {
+                        $stmt = $pdo->prepare("SELECT id FROM subjects WHERE subject_code = :code");
+                        $stmt->execute([':code' => $code]);
+                        $subject_id = $stmt->fetchColumn();
+                    } catch (PDOException $e) {
+                        // Log error or handle, but don't let it break json_encode
+                        error_log("PDOException while fetching subject_id for code $code in view_processed_data.php: " . $e->getMessage());
+                        $subject_id = null; // Ensure subject_id is null on error
+                    }
+                }
+                return ['code' => $code, 'name' => $name, 'id' => $subject_id ?: null]; // Ensure id is explicitly null if not found
+            }, array_keys($uniqueSubjectCodesInBatch), array_values($uniqueSubjectCodesInBatch)), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE);
+        ?>;
 
         document.addEventListener('DOMContentLoaded', function() {
             var studentDataModalElement = document.getElementById('studentDataModal');
