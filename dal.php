@@ -555,28 +555,100 @@ function updateStudentDetails(PDO $pdo, int $studentId, string $studentName, ?st
  * @param string $searchTerm
  * @param int $batchId
  * @param int $limit
+ * @param bool $fetchDetails If true, fetches full details including LIN and scores.
  * @return array
  */
-function searchStudentsByNameInBatch(PDO $pdo, string $searchTerm, int $batchId, int $limit = 10): array {
-    // We need to find students who are part of the given batch and match the search term.
-    // Students are linked to a batch via the scores table (or student_report_summary).
-    // Let's use the scores table as it's fundamental to a student being "in" a batch with marks.
-    $sql = "SELECT DISTINCT s.id, s.student_name
-            FROM students s
-            JOIN scores sc ON s.id = sc.student_id
-            WHERE sc.report_batch_id = :batch_id
-            AND s.student_name LIKE :search_term
-            ORDER BY s.student_name ASC
-            LIMIT :limit_val";
+function searchStudentsByNameInBatch(PDO $pdo, string $searchTerm, int $batchId, int $limit = 10, bool $fetchDetails = false): array {
+    $searchTermPattern = '%' . trim($searchTerm) . '%';
 
-    $stmt = $pdo->prepare($sql);
-    $stmt->bindValue(':batch_id', $batchId, PDO::PARAM_INT);
-    $stmt->bindValue(':search_term', '%' . trim($searchTerm) . '%', PDO::PARAM_STR);
-    $stmt->bindValue(':limit_val', $limit, PDO::PARAM_INT);
-
-    try {
+    if (!$fetchDetails) {
+        // Original simple search for just names and IDs
+        $sql = "SELECT DISTINCT s.id, s.student_name
+                FROM students s
+                JOIN scores sc ON s.id = sc.student_id
+                WHERE sc.report_batch_id = :batch_id
+                AND s.student_name LIKE :search_term
+                ORDER BY s.student_name ASC
+                LIMIT :limit_val";
+        $stmt = $pdo->prepare($sql);
+        $stmt->bindValue(':batch_id', $batchId, PDO::PARAM_INT);
+        $stmt->bindValue(':search_term', $searchTermPattern, PDO::PARAM_STR);
+        $stmt->bindValue(':limit_val', $limit, PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    // Fetch detailed information including LIN and scores
+    // This is more complex as we need to aggregate scores per student.
+    // First, get matching student IDs
+    $sqlStudentIds = "SELECT DISTINCT s.id
+                      FROM students s
+                      JOIN scores sc ON s.id = sc.student_id
+                      WHERE sc.report_batch_id = :batch_id
+                      AND s.student_name LIKE :search_term
+                      ORDER BY s.student_name ASC
+                      LIMIT :limit_val";
+    $stmtStudentIds = $pdo->prepare($sqlStudentIds);
+    $stmtStudentIds->bindValue(':batch_id', $batchId, PDO::PARAM_INT);
+    $stmtStudentIds->bindValue(':search_term', $searchTermPattern, PDO::PARAM_STR);
+    $stmtStudentIds->bindValue(':limit_val', $limit, PDO::PARAM_INT);
+    $stmtStudentIds->execute();
+    $studentIds = $stmtStudentIds->fetchAll(PDO::FETCH_COLUMN);
+
+    if (empty($studentIds)) {
+        return [];
+    }
+
+    // Now fetch details for these students
+    $placeholders = implode(',', array_fill(0, count($studentIds), '?'));
+    $sqlDetails = "SELECT
+                        s.id as student_id,
+                        s.student_name,
+                        s.lin_no,
+                        subj.id as subject_id,
+                        subj.subject_code,
+                        subj.subject_name_full,
+                        sc.bot_score,
+                        sc.mot_score,
+                        sc.eot_score
+                   FROM students s
+                   LEFT JOIN scores sc ON s.id = sc.student_id AND sc.report_batch_id = ?
+                   LEFT JOIN subjects subj ON sc.subject_id = subj.id
+                   WHERE s.id IN ($placeholders)
+                   ORDER BY s.student_name ASC, subj.subject_name_full ASC";
+
+    $params = array_merge([$batchId], $studentIds);
+    $stmtDetails = $pdo->prepare($sqlDetails);
+    $stmtDetails->execute($params);
+    $rows = $stmtDetails->fetchAll(PDO::FETCH_ASSOC);
+
+    $results = [];
+    foreach ($rows as $row) {
+        $studentId = $row['student_id'];
+        if (!isset($results[$studentId])) {
+            $results[$studentId] = [
+                'id' => $studentId,
+                'student_name' => $row['student_name'],
+                'lin_no' => $row['lin_no'],
+                'scores' => [] // Initialize scores array
+            ];
+        }
+        if ($row['subject_code']) { // If there are scores for this subject
+            $results[$studentId]['scores'][$row['subject_code']] = [
+                'subject_id' => $row['subject_id'],
+                'subject_name_full' => $row['subject_name_full'], // Good for display in modal if needed
+                'bot_score' => $row['bot_score'],
+                'mot_score' => $row['mot_score'],
+                'eot_score' => $row['eot_score']
+            ];
+        }
+    }
+    return array_values($results); // Return as a simple array for JSON encoding
+
+}
+
+
+/**
     } catch (PDOException $e) {
         error_log("DAL Error: searchStudentsByNameInBatch failed. Batch: $batchId, Term: $searchTerm. Error: " . $e->getMessage());
         return []; // Return empty array on error

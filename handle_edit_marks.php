@@ -31,13 +31,111 @@ if (!$batch_id) {
 $hasErrors = false;
 $changesMade = 0;
 $studentDataProcessed = false; // Flag to indicate if any student data was in the POST
+$modalAction = filter_input(INPUT_POST, 'modal_action', FILTER_SANITIZE_STRING);
 
 try {
     $pdo->beginTransaction();
 
-    // Process existing students
-    if (isset($_POST['students']) && is_array($_POST['students']) && !empty($_POST['students'])) {
-        $studentDataProcessed = true; // Mark that we are processing student data
+    // === Handle Modal Submission START ===
+    if (!empty($modalAction)) {
+        $studentDataProcessed = true; // Data is being processed
+        $modalStudentName = trim(filter_input(INPUT_POST, 'modal_student_name', FILTER_SANITIZE_STRING));
+        $modalStudentLin = trim(filter_input(INPUT_POST, 'modal_student_lin', FILTER_SANITIZE_STRING));
+        $modalStudentLin = empty($modalStudentLin) ? null : $modalStudentLin;
+        $modalScores = $_POST['modal_scores'] ?? []; // Array of [subject_code => [bot, mot, eot, subject_id]]
+
+        if (empty($modalStudentName)) {
+            $_SESSION['error_message'] = "Student name cannot be empty when submitting from modal.";
+            $hasErrors = true;
+        } else {
+            if ($modalAction === 'add') {
+                $student_id = upsertStudent($pdo, $modalStudentName, $modalStudentLin);
+                if (!$student_id) {
+                    $_SESSION['error_message'] = "Failed to add new student: " . htmlspecialchars($modalStudentName);
+                    $hasErrors = true;
+                    error_log("Modal Add: Failed to upsert new student: $modalStudentName, LIN: $modalStudentLin for batch $batch_id");
+                } else {
+                    logActivity($pdo, $_SESSION['user_id'], $_SESSION['username'], 'STUDENT_ADDED_VIA_MODAL', "Added new student '" . htmlspecialchars($modalStudentName) . "' (ID: $student_id) to batch ID $batch_id via modal.", 'student', $student_id);
+                    $changesMade++;
+                    // Process scores for the new student
+                    foreach ($modalScores as $subject_code => $scoreData) {
+                        $subject_id_from_modal = filter_var($scoreData['subject_id'] ?? null, FILTER_VALIDATE_INT);
+                        if (!$subject_id_from_modal) {
+                             error_log("Modal Add: Missing subject_id for $subject_code, student $student_id. Skipping score.");
+                             continue;
+                        }
+                        $bot = isset($scoreData['bot']) ? trim($scoreData['bot']) : null;
+                        $mot = isset($scoreData['mot']) ? trim($scoreData['mot']) : null;
+                        $eot = isset($scoreData['eot']) ? trim($scoreData['eot']) : null;
+                        $bot_s = ($bot === '' || $bot === null) ? null : (is_numeric($bot) ? (float)$bot : null);
+                        $mot_s = ($mot === '' || $mot === null) ? null : (is_numeric($mot) ? (float)$mot : null);
+                        $eot_s = ($eot === '' || $eot === null) ? null : (is_numeric($eot) ? (float)$eot : null);
+
+                        if (upsertScore($pdo, $batch_id, $student_id, $subject_id_from_modal, $bot_s, $mot_s, $eot_s)) {
+                            // $changesMade++; // Counted student addition already
+                        }
+                    }
+                }
+            } elseif ($modalAction === 'edit') {
+                $student_id = filter_input(INPUT_POST, 'modal_student_id', FILTER_VALIDATE_INT);
+                if (!$student_id) {
+                    $_SESSION['error_message'] = "Invalid student ID for modal edit.";
+                    $hasErrors = true;
+                    error_log("Modal Edit: Invalid student_id for batch $batch_id");
+                } else {
+                    // Update student details
+                    if (updateStudentDetails($pdo, $student_id, $modalStudentName, $modalStudentLin)) {
+                        // Check if name/lin actually changed to count as a change
+                        // This requires fetching current details first, or updateStudentDetails returning more info.
+                        // For simplicity, we'll count score changes primarily.
+                    }
+
+                    // Process scores for the existing student
+                    $scoreChangesForLog = [];
+                    foreach ($modalScores as $subject_code => $scoreData) {
+                        $subject_id_from_modal = filter_var($scoreData['subject_id'] ?? null, FILTER_VALIDATE_INT);
+                         if (!$subject_id_from_modal) {
+                             error_log("Modal Edit: Missing subject_id for $subject_code, student $student_id. Skipping score.");
+                             continue;
+                        }
+                        $bot = isset($scoreData['bot']) ? trim($scoreData['bot']) : null;
+                        $mot = isset($scoreData['mot']) ? trim($scoreData['mot']) : null;
+                        $eot = isset($scoreData['eot']) ? trim($scoreData['eot']) : null;
+                        $bot_s = ($bot === '' || $bot === null) ? null : (is_numeric($bot) ? (float)$bot : null);
+                        $mot_s = ($mot === '' || $mot === null) ? null : (is_numeric($mot) ? (float)$mot : null);
+                        $eot_s = ($eot === '' || $eot === null) ? null : (is_numeric($eot) ? (float)$eot : null);
+
+                        // Fetch original scores for logging comparison
+                        $stmtOrig = $pdo->prepare("SELECT bot_score, mot_score, eot_score FROM scores WHERE report_batch_id = :rbid AND student_id = :sid AND subject_id = :subid");
+                        $stmtOrig->execute([':rbid' => $batch_id, ':sid' => $student_id, ':subid' => $subject_id_from_modal]);
+                        $originalModalScores = $stmtOrig->fetch(PDO::FETCH_ASSOC);
+
+                        if (upsertScore($pdo, $batch_id, $student_id, $subject_id_from_modal, $bot_s, $mot_s, $eot_s)) {
+                            $changesMade++; // Count each score upsert as a change
+                            $changedFieldsForSubject = [];
+                            if ($originalModalScores === false || $originalModalScores['bot_score'] != $bot_s) $changedFieldsForSubject[] = "BOT";
+                            if ($originalModalScores === false || $originalModalScores['mot_score'] != $mot_s) $changedFieldsForSubject[] = "MOT";
+                            if ($originalModalScores === false || $originalModalScores['eot_score'] != $eot_s) $changedFieldsForSubject[] = "EOT";
+                            if(!empty($changedFieldsForSubject)) {
+                                $scoreChangesForLog[] = "$subject_code (" . implode(',', $changedFieldsForSubject) . ")";
+                            }
+                        }
+                    }
+                    if (!empty($scoreChangesForLog)) {
+                         logActivity($pdo, $_SESSION['user_id'], $_SESSION['username'], 'MARKS_EDITED_VIA_MODAL', "Edited marks for " . htmlspecialchars($modalStudentName) . " (ID: $student_id) in batch ID $batch_id via modal. Changes: " . implode('; ', $scoreChangesForLog) , 'student', $student_id);
+                    } else {
+                        // Log if only name/lin changed? updateStudentDetails might need to return more info
+                        // For now, if no score changes, we assume name/lin change was the primary edit if $changesMade is still 0 but updateStudentDetails was successful.
+                        // This needs refinement if we want to log "name changed" separately.
+                    }
+                }
+            }
+        }
+    // === Handle Modal Submission END ===
+
+    // === Handle Table Form Submission START ===
+    } elseif (isset($_POST['students']) && is_array($_POST['students']) && !empty($_POST['students'])) {
+        $studentDataProcessed = true;
         foreach ($_POST['students'] as $student_id_key => $studentData) {
             $student_id = filter_var($studentData['id'], FILTER_VALIDATE_INT);
             $student_name = trim(filter_var($studentData['name'], FILTER_SANITIZE_STRING));

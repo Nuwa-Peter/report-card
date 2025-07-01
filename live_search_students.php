@@ -18,6 +18,7 @@ header('Content-Type: application/json');
 
 $searchTerm = trim(filter_input(INPUT_GET, 'term', FILTER_SANITIZE_STRING));
 $batchId = filter_input(INPUT_GET, 'batch_id', FILTER_VALIDATE_INT);
+$fetchDetails = filter_input(INPUT_GET, 'details', FILTER_VALIDATE_BOOLEAN);
 
 if (!$batchId) {
     http_response_code(400); // Bad Request
@@ -32,7 +33,8 @@ if (empty($searchTerm) || strlen($searchTerm) < 2) { // Minimum search term leng
 
 $results = [];
 try {
-    $results = searchStudentsByNameInBatch($pdo, $searchTerm, $batchId);
+    // Pass the $fetchDetails flag to the DAL function
+    $results = searchStudentsByNameInBatch($pdo, $searchTerm, $batchId, 10, $fetchDetails);
 } catch (Exception $e) {
     // DAL function already logs specific PDO errors
     http_response_code(500); // Internal Server Error

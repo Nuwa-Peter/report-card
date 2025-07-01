@@ -194,7 +194,8 @@ $subjectDisplayNames = [
                 </div>
             </div>
             <div class="card-footer text-center">
-                <button type="button" id="enableEditingBtn" class="btn btn-info btn-sm me-2"><i class="fas fa-edit"></i> Enable Editing / Add Student</button>
+                <button type="button" id="addNewStudentModalBtn" class="btn btn-primary btn-sm me-2"><i class="fas fa-user-plus"></i> Add New Student</button>
+                <button type="button" id="enableEditingBtn" class="btn btn-info btn-sm me-2"><i class="fas fa-edit"></i> Enable Table Editing</button>
                 <a href="run_calculations.php?batch_id=<?php echo $batch_id; ?>" class="btn btn-warning btn-sm me-2"><i class="fas fa-calculator"></i> Calculate Summaries & Auto-Remarks</a>
                 <a href="generate_pdf.php?batch_id=<?php echo $batch_id; ?>" class="btn btn-danger btn-sm me-2"><i class="fas fa-file-pdf"></i> Generate Full Class PDF Report</a>
                 <a href="summary_sheet.php?batch_id=<?php echo $batch_id; ?>" class="btn btn-success btn-sm me-2"><i class="fas fa-chart-bar"></i> View Class Summary Sheet</a>
@@ -392,8 +393,100 @@ $subjectDisplayNames = [
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Modal Structure for Editing/Adding Student -->
+    <div class="modal fade" id="studentDataModal" tabindex="-1" aria-labelledby="studentDataModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg"> <!-- modal-lg for more space -->
+            <div class="modal-content">
+                <form id="studentModalForm" method="POST" action="handle_edit_marks.php">
+                    <input type="hidden" name="batch_id" value="<?php echo $batch_id; ?>">
+                    <input type="hidden" id="modalStudentId" name="modal_student_id"> <!-- To identify existing student -->
+                    <input type="hidden" id="modalAction" name="modal_action"> <!-- 'add' or 'edit' -->
+
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="studentDataModalLabel">Student Data</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body" id="studentModalBody">
+                        <!-- Student Info -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="modalStudentName" class="form-label">Student Name</label>
+                                <input type="text" class="form-control" id="modalStudentName" name="modal_student_name" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="modalStudentLin" class="form-label">LIN No.</label>
+                                <input type="text" class="form-control" id="modalStudentLin" name="modal_student_lin">
+                            </div>
+                        </div>
+                        <hr>
+                        <!-- Scores Section Title -->
+                        <h6>Subject Scores</h6>
+                        <div id="modalScoresContainer" class="row">
+                            <!-- JS will populate this based on batch subjects -->
+                            <!-- Example structure for one subject (to be repeated by JS):
+                            <div class="col-md-4 mb-2">
+                                <label class="form-label">Subject Name</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">BOT</span>
+                                    <input type="text" class="form-control" name="modal_scores[subject_code][bot]">
+                                    <span class="input-group-text">MOT</span>
+                                    <input type="text" class="form-control" name="modal_scores[subject_code][mot]">
+                                    <span class="input-group-text">EOT</span>
+                                    <input type="text" class="form-control" name="modal_scores[subject_code][eot]">
+                                    <input type="hidden" name="modal_scores[subject_code][subject_id]" value="subject_id_val">
+                                </div>
+                            </div>
+                            -->
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script>
+        // Pass unique subject codes and names from PHP to JavaScript
+        const batchSubjects = <?php echo json_encode(array_map(function($code, $name) {
+            // Attempt to get subject_id. This assumes $studentsWithScores is populated.
+            // A more robust way might be to query subject IDs separately if needed universally.
+            $subject_id = null;
+            if (!empty($studentsWithScores)) {
+                foreach ($studentsWithScores as $student) {
+                    if (isset($student['subjects'][$code]['subject_id'])) {
+                        $subject_id = $student['subjects'][$code]['subject_id'];
+                        break;
+                    }
+                }
+            }
+            // If no subject_id found (e.g. empty batch initially), try to get it from `subjects` table by code
+            if (!$subject_id) {
+                 $stmt = $pdo->prepare("SELECT id FROM subjects WHERE subject_code = :code");
+                 $stmt->execute([':code' => $code]);
+                 $subject_id = $stmt->fetchColumn();
+            }
+
+            return ['code' => $code, 'name' => $name, 'id' => $subject_id];
+        }, array_keys($uniqueSubjectCodesInBatch), array_values($uniqueSubjectCodesInBatch))); ?>;
+
+
         document.addEventListener('DOMContentLoaded', function() {
+            var studentDataModalElement = document.getElementById('studentDataModal');
+            var studentDataModal = studentDataModalElement ? new bootstrap.Modal(studentDataModalElement) : null;
+
+            const modalTitleElement = document.getElementById('studentDataModalLabel');
+            const modalStudentIdField = document.getElementById('modalStudentId');
+            const modalActionField = document.getElementById('modalAction');
+            const modalStudentNameField = document.getElementById('modalStudentName');
+            const modalStudentLinField = document.getElementById('modalStudentLin');
+            const modalScoresContainer = document.getElementById('modalScoresContainer');
+            const studentModalForm = document.getElementById('studentModalForm');
+
+            const addNewStudentModalBtn = document.getElementById('addNewStudentModalBtn');
             const enableEditingBtn = document.getElementById('enableEditingBtn');
             const cancelEditingBtn = document.getElementById('cancelEditingBtn');
             const editModeButtons = document.getElementById('editModeButtons');
@@ -403,10 +496,61 @@ $subjectDisplayNames = [
             const addStudentBtnContainer = document.getElementById('addStudentBtnContainer');
             const studentSearchInput = document.getElementById('studentSearchInput');
             const studentSearchResultsContainer = document.getElementById('studentSearchResults');
-            let newStudentIndex = 0;
+            let newStudentIndex = 0; // Used for table-based "add another student"
             let searchTimeout = null;
 
+            // --- Helper function to build score inputs for modal ---
+            function populateModalScores(scoresData = {}) { // scoresData is an object { subject_code: { bot: val, mot: val, eot: val, subject_id: val } }
+                modalScoresContainer.innerHTML = ''; // Clear previous scores
+                batchSubjects.forEach(subject => {
+                    const scoreDiv = document.createElement('div');
+                    scoreDiv.className = 'col-md-6 col-lg-4 mb-3'; // Adjust grid for better layout
 
+                    const scores = scoresData[subject.code] || {};
+
+                    scoreDiv.innerHTML = `
+                        <label class="form-label fw-bold">${subject.name}</label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text">BOT</span>
+                            <input type="text" class="form-control"
+                                   name="modal_scores[${subject.code}][bot]"
+                                   value="${scores.bot_score || ''}">
+                            <span class="input-group-text">MOT</span>
+                            <input type="text" class="form-control"
+                                   name="modal_scores[${subject.code}][mot]"
+                                   value="${scores.mot_score || ''}">
+                            <span class="input-group-text">EOT</span>
+                            <input type="text" class="form-control"
+                                   name="modal_scores[${subject.code}][eot]"
+                                   value="${scores.eot_score || ''}">
+                        </div>
+                        <input type="hidden" name="modal_scores[${subject.code}][subject_id]" value="${subject.id || ''}">
+                    `;
+                    // Add a small check for subject_id, if it's missing, log an error or alert.
+                    // The PHP code for batchSubjects tries to always include it.
+                    if (!subject.id) {
+                        console.warn(`Subject ID missing for ${subject.name} (${subject.code}) in modal generation.`);
+                        // Optionally, disable these inputs or show a message if subject.id is critical here.
+                    }
+                    modalScoresContainer.appendChild(scoreDiv);
+                });
+            }
+
+            // --- Setup for "Add New Student" Modal ---
+            if (addNewStudentModalBtn && studentDataModal) {
+                addNewStudentModalBtn.addEventListener('click', function() {
+                    studentModalForm.reset(); // Clear form fields
+                    modalTitleElement.textContent = 'Add New Student';
+                    modalActionField.value = 'add';
+                    modalStudentIdField.value = ''; // No student ID for new student
+
+                    populateModalScores(); // Populate with empty score fields for all batch subjects
+
+                    studentDataModal.show();
+                });
+            }
+
+            // --- Original table editing logic ---
             if (!scoresTable && !enableEditingBtn) { // If table doesn't exist, editing makes no sense
                 if(enableEditingBtn) enableEditingBtn.style.display = 'none';
                 return;
@@ -538,8 +682,8 @@ $subjectDisplayNames = [
                 });
             }
 
-            // Live Search Logic
-            if(studentSearchInput && studentSearchResultsContainer) {
+            // Live Search Logic - Modified to open modal for editing
+            if(studentSearchInput && studentSearchResultsContainer && studentDataModal) {
                 studentSearchInput.addEventListener('input', function() {
                     const searchTerm = this.value.trim();
                     clearTimeout(searchTimeout);
@@ -553,54 +697,53 @@ $subjectDisplayNames = [
                     studentSearchResultsContainer.style.display = 'block';
                     studentSearchResultsContainer.innerHTML = '<div class="list-group-item disabled">Searching...</div>';
 
-
                     searchTimeout = setTimeout(() => {
-                        fetch(`live_search_students.php?batch_id=<?php echo $batch_id; ?>&term=${encodeURIComponent(searchTerm)}`)
-                            .then(response => {
-                                if (!response.ok) {
-                                    throw new Error(`HTTP error! status: ${response.status}`);
-                                }
-                                return response.json();
-                            })
+                        // Fetch detailed student data including scores for the modal
+                        fetch(`live_search_students.php?batch_id=<?php echo $batch_id; ?>&term=${encodeURIComponent(searchTerm)}&details=true`)
+                            .then(response => response.json())
                             .then(data => {
                                 studentSearchResultsContainer.innerHTML = '';
                                 if (data.error) {
                                      studentSearchResultsContainer.innerHTML = `<div class="list-group-item list-group-item-danger">${data.error}</div>`;
                                 } else if (data.length > 0) {
-                                    data.forEach(student => {
+                                    data.forEach(student => { // student object should now contain name, id, lin_no, and a scores object
                                         const item = document.createElement('a');
-                                        item.href = '#'; // Prevent page jump
+                                        item.href = '#';
                                         item.className = 'list-group-item list-group-item-action';
-                                        item.textContent = student.student_name; // Assuming student_name is returned
-                                        item.dataset.studentId = student.id;     // Assuming id is returned
+                                        item.textContent = student.student_name;
                                         item.addEventListener('click', function(e) {
                                             e.preventDefault();
-                                            const studentId = this.dataset.studentId;
-                                            const targetRow = scoresTable.querySelector(`tr[data-student-id="${studentId}"]`);
-                                            if (targetRow) {
-                                                targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                                highlightRow(targetRow);
-                                            }
-                                            studentSearchInput.value = ''; // Clear search input
-                                            studentSearchResultsContainer.innerHTML = ''; // Clear results
-                                            studentSearchResultsContainer.style.display = 'none'; // Hide results
+
+                                            studentModalForm.reset();
+                                            modalTitleElement.textContent = 'Edit Student Data - ' + student.student_name;
+                                            modalActionField.value = 'edit';
+                                            modalStudentIdField.value = student.id;
+                                            modalStudentNameField.value = student.student_name;
+                                            modalStudentLinField.value = student.lin_no || '';
+
+                                            // student.scores is expected to be { subject_code: { bot_score: val, mot_score: val, eot_score: val, subject_id: val }, ... }
+                                            populateModalScores(student.scores || {});
+
+                                            studentDataModal.show();
+
+                                            studentSearchInput.value = '';
+                                            studentSearchResultsContainer.innerHTML = '';
+                                            studentSearchResultsContainer.style.display = 'none';
                                         });
                                         studentSearchResultsContainer.appendChild(item);
                                     });
                                 } else {
-                                    studentSearchResultsContainer.innerHTML = '<div class="list-group-item disabled">No students found matching your search in this batch.</div>';
+                                    studentSearchResultsContainer.innerHTML = '<div class="list-group-item disabled">No students found matching your search.</div>';
                                 }
-                                studentSearchResultsContainer.style.display = 'block'; // Ensure it's visible
                             })
                             .catch(error => {
-                                console.error('Error fetching search results:', error);
-                                studentSearchResultsContainer.innerHTML = '<div class="list-group-item list-group-item-danger">Error loading results.</div>';
-                                studentSearchResultsContainer.style.display = 'block'; // Ensure it's visible
+                                console.error('Error fetching detailed search results:', error);
+                                studentSearchResultsContainer.innerHTML = '<div class="list-group-item list-group-item-danger">Error loading detailed results.</div>';
                             });
-                    }, 300); // Debounce requests by 300ms
+                    }, 300);
                 });
 
-                // Hide search results if clicked outside
+                // Hide search results if clicked outside (remains the same)
                 document.addEventListener('click', function(event) {
                     if (studentSearchInput && studentSearchResultsContainer) { // Check if elements exist
                         if (!studentSearchInput.contains(event.target) && !studentSearchResultsContainer.contains(event.target)) {
@@ -624,6 +767,20 @@ $subjectDisplayNames = [
                     recalculateWarningDiv.classList.remove('apply-flash-red-warning-infinite');
                     // The server will handle the session flag ('batch_data_changed_for_calc')
                     // which determines if the warning is shown on the next page load (it should be removed).
+                });
+            }
+
+            // --- Logic for Modal Form Submission ---
+            // This is a basic full-page submission. AJAX would be an enhancement.
+            if (studentModalForm) {
+                studentModalForm.addEventListener('submit', function(e) {
+                    // The form will submit to handle_edit_marks.php
+                    // We need to ensure the data from modal_scores is transformed into
+                    // the format handle_edit_marks.php expects for 'students' or 'new_student' arrays.
+                    // This will be handled by PHP in handle_edit_marks.php by looking at modal_action.
+                    // For now, no special JS transformation is done here before submit,
+                    // relying on backend to interpret modal_ prefixed fields.
+                    // A loading indicator could be shown here.
                 });
             }
         });
