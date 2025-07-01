@@ -22,7 +22,7 @@ Alternatively, you can directly access `about.php` if you have the system runnin
 
 *   The system is built using PHP, MySQL, and Bootstrap 5.
 *   Excel processing relies on the PhpSpreadsheet library.
-*   PDF generation uses TCPDF (or a similar library, verify in `generate_pdf.php`).
+*   PDF generation uses MPDF (or a similar library, verify in `generate_pdf.php`).
 
 ---
 *Original README content "test" was likely a placeholder.*
