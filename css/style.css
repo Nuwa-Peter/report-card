@@ -70,8 +70,8 @@ footer {
    For now, the inline styles in report_card.php are sufficient for mPDF.
 */
 
-/* Flashing animation for alerts after changes */
-@keyframes flash-red-emphasis {
+/* Red Flashing animation for warning messages */
+@keyframes flash-red-warning-emphasis {
     0%, 100% {
         box-shadow: 0 0 5px rgba(220, 53, 69, 0); /* Red, transparent */
     }
@@ -80,9 +80,43 @@ footer {
     }
 }
 
-.flash-alert-red {
-    animation-name: flash-red-emphasis;
+.apply-flash-red-warning {
+    animation-name: flash-red-warning-emphasis;
     animation-duration: 0.7s; /* Speed of one flash cycle */
     animation-iteration-count: 3; /* Flash 3 times */
     animation-timing-function: ease-in-out;
+}
+
+.apply-flash-red-warning-infinite {
+    animation-name: flash-red-warning-emphasis; /* Uses the same keyframes */
+    animation-duration: 1s; /* Slightly slower for infinite */
+    animation-iteration-count: infinite; /* Loop indefinitely */
+    animation-timing-function: ease-in-out;
+}
+
+/* Green Flashing animation for success messages */
+@keyframes flash-green-success-emphasis {
+    0%, 100% {
+        box-shadow: 0 0 5px rgba(25, 135, 84, 0); /* Green (Bootstrap success), transparent */
+    }
+    50% {
+        box-shadow: 0 0 15px 5px rgba(25, 135, 84, 0.7); /* Green, more visible */
+    }
+}
+
+.apply-flash-green-success {
+    animation-name: flash-green-success-emphasis;
+    animation-duration: 0.7s; /* Speed of one flash cycle */
+    animation-iteration-count: 3; /* Flash 3 times */
+    animation-timing-function: ease-in-out;
+}
+
+/* Centering for alert messages */
+.alert-centered {
+    text-align: center;
+    /* For block-level alerts, margin auto works if width is constrained */
+    /* If they are full width, text-align is enough. */
+    /* Bootstrap alerts are typically full width within their container. */
+    /* Let's add display: table for more robust centering of the box itself if needed, */
+    /* but this might alter layout if not expected. Start with text-align. */
 }

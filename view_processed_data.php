@@ -134,13 +134,7 @@ $subjectDisplayNames = [
             border-color: #80bdff;
             box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
         }
-        @keyframes flash-warning {
-            0%, 100% { opacity: 1; /*background-color: #fff3cd;*/ }
-            50% { opacity: 0.4; /*background-color: #ffe082; slightly darker yellow */ }
-        }
-        .flashing-warning {
-            animation: flash-warning 1.5s infinite ease-in-out;
-        }
+        /* Removed inline flash-warning keyframes and class, will use global style from style.css */
     </style>
 </head>
 <body>
@@ -162,19 +156,23 @@ $subjectDisplayNames = [
         <h2 class="mb-3">Processed Data for Batch ID: <?php echo htmlspecialchars($batch_id); ?></h2>
 
         <?php
+        // Container for messages to help with centering if needed, and grouping
+        echo '<div class="messages-container mb-3">'; // Added margin-bottom for spacing
+
         if (isset($_SESSION['error_message']) && !empty($_SESSION['error_message'])) {
-            echo '<div class="alert alert-danger" role="alert">' . htmlspecialchars($_SESSION['error_message']) . '</div>';
+            echo '<div class="alert alert-danger alert-centered" role="alert">' . htmlspecialchars($_SESSION['error_message']) . '</div>';
             unset($_SESSION['error_message']);
         }
         if (isset($_SESSION['success_message']) && !empty($_SESSION['success_message'])) {
-            // Add the flash-alert-red class for the animation
-            echo '<div class="alert alert-success flash-alert-red" role="alert">' . htmlspecialchars($_SESSION['success_message']) . '</div>';
+            // Apply green flashing and centering for success messages
+            echo '<div class="alert alert-success apply-flash-green-success alert-centered" role="alert">' . htmlspecialchars($_SESSION['success_message']) . '</div>';
             unset($_SESSION['success_message']);
         }
-        if (isset($_SESSION['info_message']) && !empty($_SESSION['info_message'])) { // Also handle info message just in case
-            echo '<div class="alert alert-info" role="alert">' . htmlspecialchars($_SESSION['info_message']) . '</div>';
+        if (isset($_SESSION['info_message']) && !empty($_SESSION['info_message'])) {
+            echo '<div class="alert alert-info alert-centered" role="alert">' . htmlspecialchars($_SESSION['info_message']) . '</div>';
             unset($_SESSION['info_message']);
         }
+        echo '</div>'; // End messages-container
         ?>
 
         <div class="card mb-4">
@@ -205,8 +203,16 @@ $subjectDisplayNames = [
 
         <?php
             $showRecalculateWarning = isset($_SESSION['batch_data_changed_for_calc'][$batch_id]) && $_SESSION['batch_data_changed_for_calc'][$batch_id] === true;
+            // Determine class for warning: if shown, it will get a red flash and be centered.
+            // The class `alert-centered` handles text centering. Bootstrap's `text-center` can also be used.
+            // `alert-warning` itself is already block and will take available width.
+            $recalculateWarningClasses = "alert alert-warning alert-centered mt-3"; // Added alert-centered
+            if (!$showRecalculateWarning) {
+                $recalculateWarningClasses .= " d-none";
+            }
+            // The JS will add the apply-flash-red-warning-infinite class if it's visible.
         ?>
-        <div id="recalculate-warning" class="alert alert-warning text-center mt-3 <?php echo $showRecalculateWarning ? '' : 'd-none'; ?>" role="alert">
+        <div id="recalculate-warning" class="<?php echo $recalculateWarningClasses; ?>" role="alert">
            <i class="fas fa-exclamation-triangle"></i> <strong>Important:</strong> Data has changed. Please re-run <strong>'Calculate Summaries & Auto-Remarks'</strong> to ensure reports and summaries are accurate.
         </div>
 
@@ -604,19 +610,20 @@ $subjectDisplayNames = [
                 });
             }
 
-            // Flashing warning logic
+            // Flashing warning logic for recalculate message
             const recalculateWarningDiv = document.getElementById('recalculate-warning');
             if (recalculateWarningDiv && !recalculateWarningDiv.classList.contains('d-none')) {
-                recalculateWarningDiv.classList.add('flashing-warning');
+                // Apply the infinite red flash
+                recalculateWarningDiv.classList.add('apply-flash-red-warning-infinite');
             }
 
             const calculateBtn = document.querySelector('a[href^="run_calculations.php?batch_id=<?php echo $batch_id; ?>"]');
-            if (calculateBtn && recalculateWarningDiv && recalculateWarningDiv.classList.contains('flashing-warning')) {
+            if (calculateBtn && recalculateWarningDiv) {
                 calculateBtn.addEventListener('click', function() {
-                    // Stop flashing immediately on click, server will handle session flag on next load
-                    recalculateWarningDiv.classList.remove('flashing-warning');
-                    // Optionally, also hide it immediately, though server-side logic will handle it on reload
-                    // recalculateWarningDiv.classList.add('d-none');
+                    // Stop flashing immediately on click by removing the class
+                    recalculateWarningDiv.classList.remove('apply-flash-red-warning-infinite');
+                    // The server will handle the session flag ('batch_data_changed_for_calc')
+                    // which determines if the warning is shown on the next page load (it should be removed).
                 });
             }
         });
