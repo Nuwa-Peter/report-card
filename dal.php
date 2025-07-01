@@ -441,7 +441,8 @@ function upsertStudent(PDO $pdo, string $studentName, ?string $linNo): ?int {
 
     // Not found, so insert new student
     try {
-        $sqlInsert = "INSERT INTO students (student_name, lin_no, created_at, updated_at) VALUES (:student_name, :lin_no, NOW(), NOW())";
+        // Removed created_at and updated_at as they are not in the user's table schema
+        $sqlInsert = "INSERT INTO students (student_name, lin_no) VALUES (:student_name, :lin_no)";
         $stmtInsert = $pdo->prepare($sqlInsert);
         $stmtInsert->execute([
             ':student_name' => $studentNameUpper,
@@ -468,13 +469,13 @@ function upsertStudent(PDO $pdo, string $studentName, ?string $linNo): ?int {
  * @return bool True on success, false on failure.
  */
 function upsertScore(PDO $pdo, int $reportBatchId, int $studentId, int $subjectId, ?float $botScore, ?float $motScore, ?float $eotScore): bool {
-    $sql = "INSERT INTO scores (report_batch_id, student_id, subject_id, bot_score, mot_score, eot_score, created_at, updated_at)
-            VALUES (:report_batch_id, :student_id, :subject_id, :bot_score, :mot_score, :eot_score, NOW(), NOW())
+    // Removed created_at and updated_at as they are likely not in the user's scores table schema
+    $sql = "INSERT INTO scores (report_batch_id, student_id, subject_id, bot_score, mot_score, eot_score)
+            VALUES (:report_batch_id, :student_id, :subject_id, :bot_score, :mot_score, :eot_score)
             ON DUPLICATE KEY UPDATE
                 bot_score = VALUES(bot_score),
                 mot_score = VALUES(mot_score),
-                eot_score = VALUES(eot_score),
-                updated_at = NOW()";
+                eot_score = VALUES(eot_score)";
     try {
         $stmt = $pdo->prepare($sql);
         $stmt->execute([
@@ -535,7 +536,8 @@ function updateStudentDetails(PDO $pdo, int $studentId, string $studentName, ?st
     }
 
     try {
-        $sql = "UPDATE students SET student_name = :student_name, lin_no = :lin_no, updated_at = NOW() WHERE id = :id";
+        // Removed updated_at = NOW() as it's likely not in the user's table schema
+        $sql = "UPDATE students SET student_name = :student_name, lin_no = :lin_no WHERE id = :id";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([
             ':student_name' => $studentNameUpper,
