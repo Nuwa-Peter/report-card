@@ -241,18 +241,30 @@ try {
     // Process new students
     if (isset($_POST['new_student']) && is_array($_POST['new_student']) && !empty($_POST['new_student'])) {
         $studentDataProcessed = true; // Mark that we are processing student data
-        foreach ($_POST['new_student'] as $newStudentData) {
-            $student_name = trim(filter_var($newStudentData['name'], FILTER_SANITIZE_STRING));
-            $lin_no = trim(filter_var($newStudentData['lin_no'], FILTER_SANITIZE_STRING));
+        foreach ($_POST['new_student'] as $key => $newStudentData) { // Added $key for potential logging
+
+            // Check if 'name' key exists and its value is not empty after trimming
+            if (!isset($newStudentData['name']) || trim((string)$newStudentData['name']) === '') {
+                // If name is not set or is effectively empty, skip this new student entry
+                // error_log("Skipping new student entry at index $key: Name is missing or empty."); // Optional: log this event
+                continue;
+            }
+            $student_name = trim(filter_var((string)$newStudentData['name'], FILTER_SANITIZE_STRING));
+
+            // Safely get lin_no: if 'lin_no' key doesn't exist, treat as empty string before filtering
+            $lin_no_raw = isset($newStudentData['lin_no']) ? (string)$newStudentData['lin_no'] : '';
+            $lin_no = trim(filter_var($lin_no_raw, FILTER_SANITIZE_STRING));
             $lin_no = empty($lin_no) ? null : $lin_no;
 
+            // The original check `if (empty($student_name))` is now somewhat redundant due to the earlier robust check,
+            // but it's harmless to keep it.
             if (empty($student_name)) {
-                // Skip if no name provided for a new student
+                // This condition should ideally not be met if the first check is robust
                 continue;
             }
 
             // 1. Add or find student
-            $new_student_id = upsertStudent($pdo, $student_name, $lin_no); // Corrected variables
+            $new_student_id = upsertStudent($pdo, $student_name, $lin_no);
 
             if (!$new_student_id) {
                 error_log("Failed to upsert new student: $student_name, LIN: $lin_no for batch $batch_id");
