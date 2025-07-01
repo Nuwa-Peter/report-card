@@ -224,32 +224,76 @@ try {
             $studentNameAllCaps = strtoupper($studentNameRaw);
             $linToStore = !empty($linValue) ? $linValue : null;
 
-            // Find or Create Student (reusing logic from current DAL upsertStudent if possible, or inline here)
-            $stmtStudent = $pdo->prepare("SELECT id FROM students WHERE student_name = :name");
-            $stmtStudent->execute([':name' => $studentNameAllCaps]);
-            $studentId = $stmtStudent->fetchColumn();
+            $studentId = null;
+            $studentInfo = null;
 
-            if (!$studentId) {
-                // If student not found by name, try by LIN if LIN is provided
-                if ($linToStore) {
-                    $stmtStudentByLin = $pdo->prepare("SELECT id FROM students WHERE lin_no = :lin_no");
-                    $stmtStudentByLin->execute([':lin_no' => $linToStore]);
-                    $studentId = $stmtStudentByLin->fetchColumn();
-                    // If found by LIN, update their name if it's different (rare case, LIN should be primary)
-                    if ($studentId) {
+            // Try to find student by LIN first, as it should be unique
+            if ($linToStore) {
+                $stmtStudentByLin = $pdo->prepare("SELECT id, student_name, lin_no FROM students WHERE lin_no = :lin_no");
+                $stmtStudentByLin->execute([':lin_no' => $linToStore]);
+                $studentInfo = $stmtStudentByLin->fetch(PDO::FETCH_ASSOC);
+                if ($studentInfo) {
+                    $studentId = $studentInfo['id'];
+                    // LIN matches. Check if name also matches or if student name needs update.
+                    if ($studentInfo['student_name'] !== $studentNameAllCaps) {
+                        // Update student name if it's different for the same LIN
                         $stmtUpdateName = $pdo->prepare("UPDATE students SET student_name = :name, current_class_id = :class_id WHERE id = :id");
                         $stmtUpdateName->execute([':name' => $studentNameAllCaps, ':class_id' => $classId, ':id' => $studentId]);
+                    } else {
+                        // LIN and Name match, just update class if needed
+                        $stmtUpdateClass = $pdo->prepare("UPDATE students SET current_class_id = :class_id WHERE id = :id");
+                        $stmtUpdateClass->execute([':class_id' => $classId, ':id' => $studentId]);
                     }
                 }
             }
 
-            if (!$studentId) { // Still not found, so insert new student
+            // If not found by LIN, try by name
+            if (!$studentId) {
+                $stmtStudentByName = $pdo->prepare("SELECT id, student_name, lin_no FROM students WHERE student_name = :name");
+                $stmtStudentByName->execute([':name' => $studentNameAllCaps]);
+                $studentInfo = $stmtStudentByName->fetch(PDO::FETCH_ASSOC);
+                if ($studentInfo) {
+                    $studentId = $studentInfo['id'];
+                    // Student found by name. Now, handle LIN.
+                    if ($linToStore) {
+                        if ($studentInfo['lin_no'] !== $linToStore) {
+                            // LIN in sheet is different from DB LIN for this student.
+                            // Check if the new LIN from sheet is already used by *another* student.
+                            $stmtCheckLinConflict = $pdo->prepare("SELECT id FROM students WHERE lin_no = :lin_no AND id != :current_student_id");
+                            $stmtCheckLinConflict->execute([':lin_no' => $linToStore, ':current_student_id' => $studentId]);
+                            if ($stmtCheckLinConflict->fetchColumn()) {
+                                // LIN conflict! The LIN from the sheet is already assigned to a different student.
+                                throw new Exception("Data conflict in sheet '" . htmlspecialchars($sheetName) . "', row " . $row . " for student '" . htmlspecialchars($studentNameRaw) . "': The LIN '" . htmlspecialchars($linToStore) . "' is already assigned to another student in the database. Please correct the Excel file.");
+                            }
+                            // No conflict, safe to update LIN for this student.
+                            $stmtUpdateLinAndClass = $pdo->prepare("UPDATE students SET lin_no = :lin_no, current_class_id = :class_id WHERE id = :id");
+                            $stmtUpdateLinAndClass->execute([':lin_no' => $linToStore, ':class_id' => $classId, ':id' => $studentId]);
+                        } else {
+                            // LIN in sheet is same as DB LIN, just update class
+                            $stmtUpdateClassOnly = $pdo->prepare("UPDATE students SET current_class_id = :class_id WHERE id = :id");
+                            $stmtUpdateClassOnly->execute([':class_id' => $classId, ':id' => $studentId]);
+                        }
+                    } else { // No LIN in sheet, but student found by name. Just update class.
+                        $stmtUpdateClassOnly = $pdo->prepare("UPDATE students SET current_class_id = :class_id WHERE id = :id");
+                        $stmtUpdateClassOnly->execute([':class_id' => $classId, ':id' => $studentId]);
+                    }
+                }
+            }
+
+            // If still no studentId, then insert new student
+            if (!$studentId) {
+                // Before inserting, if a LIN is provided, ensure it's not already in the database AT ALL
+                // (This check is implicitly covered by unique constraint if insert fails, but explicit check gives better error before attempting insert)
+                if ($linToStore) {
+                    $stmtCheckLinExists = $pdo->prepare("SELECT id FROM students WHERE lin_no = :lin_no");
+                    $stmtCheckLinExists->execute([':lin_no' => $linToStore]);
+                    if ($stmtCheckLinExists->fetchColumn()) {
+                         throw new Exception("Data conflict in sheet '" . htmlspecialchars($sheetName) . "', row " . $row . " for new student '" . htmlspecialchars($studentNameRaw) . "': The LIN '" . htmlspecialchars($linToStore) . "' is already assigned to another student in the database. Cannot create new student with this LIN.");
+                    }
+                }
                 $stmtInsertStudent = $pdo->prepare("INSERT INTO students (student_name, current_class_id, lin_no) VALUES (:name, :class_id, :lin_no)");
                 $stmtInsertStudent->execute([':name' => $studentNameAllCaps, ':class_id' => $classId, ':lin_no' => $linToStore]);
                 $studentId = $pdo->lastInsertId();
-            } else { // Student found, update their current class and LIN if necessary
-                $stmtUpdateStudent = $pdo->prepare("UPDATE students SET current_class_id = :class_id, lin_no = :lin_no WHERE id = :id");
-                $stmtUpdateStudent->execute([':class_id' => $classId, ':lin_no' => $linToStore, ':id' => $studentId]);
             }
 
             // Get scores
