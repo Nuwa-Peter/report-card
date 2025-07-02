@@ -713,14 +713,19 @@ function logActivity(
  * @return array An array of activity log records.
  */
 function getRecentActivities(PDO $pdo, int $limit = 15): array {
-    // Assuming DB server is UTC. Convert to Africa/Kampala for display.
+    // Timestamp is expected to be 'Africa/Kampala' for display.
     // The format '%d/%m/%Y %H:%i:%s' is what the JS `parseEatTimestampToDateObject` expects.
+    // IF activity_log.timestamp is stored in UTC (recommended):
+    $timestamp_conversion_sql = "DATE_FORMAT(CONVERT_TZ(timestamp, 'UTC', 'Africa/Kampala'), '%d/%m/%Y %H:%i:%s')";
+    // IF activity_log.timestamp is ALREADY stored in 'Africa/Kampala' (EAT):
+    // $timestamp_conversion_sql = "DATE_FORMAT(timestamp, '%d/%m/%Y %H:%i:%s')";
+
     $sql = "SELECT
                 id,
                 username,
                 action_type,
                 description,
-                DATE_FORMAT(CONVERT_TZ(timestamp, 'UTC', 'Africa/Kampala'), '%d/%m/%Y %H:%i:%s') AS timestamp,
+                {$timestamp_conversion_sql} AS timestamp,
                 entity_type,
                 entity_id
             FROM activity_log
