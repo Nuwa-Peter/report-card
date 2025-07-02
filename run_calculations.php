@@ -36,15 +36,15 @@ if ($isP4_P7) {
 }
 
 $gradingScalePointsMap = ['D1'=>1, 'D2'=>2, 'C3'=>3, 'C4'=>4, 'C5'=>5, 'C6'=>6, 'P7'=>7, 'P8'=>8, 'F9'=>9, 'N/A'=>0];
-// Simplified remarks for subject EOT scores
+// Updated EOT remarks scale as per user request
 $remarksScoreMap = [
-    90 => 'Excellent work!',        // For scores 90-100
-    80 => 'Very good work!',       // For scores 80-89
-    70 => 'Good work.',            // For scores 70-79
-    60 => 'Satisfactory work.',    // For scores 60-69
-    50 => 'Making progress.',      // For scores 50-59
-    0  => 'Needs more practice.',  // For scores 0-49
-    'N/A' => 'N/A'                 // For non-numeric scores
+    90 => "Excellent",     // 100-90
+    80 => "Very Good",     // 89-80
+    70 => "Good",          // 79-70
+    60 => "Fair",          // 69-60
+    50 => "Tried",         // 59-50
+    0  => "Improve"        // 49-0
+    // N/A for non-scores is handled by getSubjectEOTRemarkUtil directly
 ];
 
 $studentsRawDataFromDB = getStudentsWithScoresForBatch($pdo, $batch_id);
@@ -100,9 +100,37 @@ try {
                 'mot_grade' => getGradeFromScoreUtil($motScore),
                 'eot_score' => $eotScore,
                 'eot_grade' => getGradeFromScoreUtil($eotScore),
-                'eot_remark' => getSubjectEOTRemarkUtil($eotScore, $remarksScoreMap),
+                'eot_remark' => getSubjectEOTRemarkUtil($eotScore, $remarksScoreMap), // Calculated remark
                 'eot_points' => ($isP4_P7) ? getPointsFromGradeUtil(getGradeFromScoreUtil($eotScore), $gradingScalePointsMap) : null
             ];
+
+            // Save the calculated eot_remark to the scores table
+            $remarkToSave = $currentStudentSubjectsEnriched[$subjectKey]['eot_remark'];
+            // We need the actual subject_id for this specific score record.
+            // $subjectScores comes from $studentDataFromDB['subjects'][$subjectKey]
+            // and $studentDataFromDB is populated by getStudentsWithScoresForBatch which joins to get subj.id as subject_id
+            $subjectIdForUpdate = $subjectScores['subject_id'] ?? null;
+
+            if ($subjectIdForUpdate !== null && $studentId !== null && $batch_id !== null) {
+                $stmtUpdateRemark = $pdo->prepare(
+                    "UPDATE scores
+                     SET eot_remark = :eot_remark
+                     WHERE report_batch_id = :batch_id
+                       AND student_id = :student_id
+                       AND subject_id = :subject_id"
+                );
+                $stmtUpdateRemark->execute([
+                    ':eot_remark' => $remarkToSave,
+                    ':batch_id' => $batch_id,
+                    ':student_id' => $studentId,
+                    ':subject_id' => $subjectIdForUpdate
+                ]);
+            } else {
+                // Log if we couldn't update a remark due to missing IDs
+                if ($subjectIdForUpdate === null) {
+                    error_log("RunCalculations: Could not save eot_remark for student $studentId, subject code $subjectKey in batch $batch_id because subject_id was missing.");
+                }
+            }
 
             if ($isP1_P3) {
                 if (is_numeric($botScore) && $botScore !== 'N/A') {

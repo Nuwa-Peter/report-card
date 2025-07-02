@@ -47,12 +47,12 @@ function getStudentsWithScoresForBatch(PDO $pdo, int $reportBatchId): array {
                 subj.subject_name_full,
                 sc.bot_score,
                 sc.mot_score,
-                sc.eot_score
+                sc.eot_score,
+                sc.eot_remark
                 -- We will fetch pre-calculated grades/remarks/points from student_report_summary later
                 -- Or, if not storing them in scores table directly:
                 -- sc.eot_grade_on_report,
                 -- sc.eot_points_on_report,
-                -- sc.eot_remark_on_report,
                 -- sc.teacher_initials_on_report
             FROM students s
             JOIN scores sc ON s.id = sc.student_id
@@ -81,10 +81,10 @@ function getStudentsWithScoresForBatch(PDO $pdo, int $reportBatchId): array {
             'subject_name_full' => $row['subject_name_full'],
             'bot_score' => $row['bot_score'],
             'mot_score' => $row['mot_score'],
-            'eot_score' => $row['eot_score']
+            'eot_score' => $row['eot_score'],
+            'eot_remark' => $row['eot_remark'] ?? null // Add the new remark
             // 'eot_grade_on_report' => $row['eot_grade_on_report'], // If fetched from scores table
             // 'eot_points_on_report' => $row['eot_points_on_report'],
-            // 'eot_remark_on_report' => $row['eot_remark_on_report'],
             // 'teacher_initials_on_report' => $row['teacher_initials_on_report']
         ];
     }
@@ -945,7 +945,8 @@ function getStudentScoresForBatchDetailed(PDO $pdo, int $studentId, int $batchId
                 subj.subject_name_full,
                 sc.bot_score,
                 sc.mot_score,
-                sc.eot_score
+                sc.eot_score,
+                sc.eot_remark
                 -- Add sc.bot_grade, sc.mot_grade, sc.eot_grade here if they are added to the 'scores' table
             FROM scores sc
             JOIN subjects subj ON sc.subject_id = subj.id
