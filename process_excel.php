@@ -192,8 +192,10 @@ try {
         $headerMOT = trim(strtoupper(strval($currentSheetObject->getCell('D1')->getValue())));
         $headerEOT = trim(strtoupper(strval($currentSheetObject->getCell('E1')->getValue())));
 
-        if ($headerLIN !== 'LIN' || !in_array($headerName, ['NAMES', 'NAME']) || $headerBOT !== 'BOT' || $headerMOT !== 'MOT' || $headerEOT !== 'EOT') {
-            throw new Exception("Invalid headers in sheet '" . htmlspecialchars($sheetName) . "'. Expected A1='LIN', B1='Names/Name', C1='BOT', D1='MOT', E1='EOT'. Found: $headerLIN, $headerName, $headerBOT, $headerMOT, $headerEOT");
+        // Allow 'NAMES/NAME' (from user's error) in addition to 'NAMES' or 'NAME' for the second column header.
+        // $headerName is already uppercased at this point.
+        if ($headerLIN !== 'LIN' || !in_array($headerName, ['NAMES/NAME', 'NAMES', 'NAME']) || $headerBOT !== 'BOT' || $headerMOT !== 'MOT' || $headerEOT !== 'EOT') {
+            throw new Exception("Invalid headers in sheet '" . htmlspecialchars($sheetName) . "'. Expected A1='LIN', B1='Names/Name' (or 'Names' or 'Name'), C1='BOT', D1='MOT', E1='EOT'. Found: $headerLIN, $headerName, $headerBOT, $headerMOT, $headerEOT");
         }
 
         $highestRow = $currentSheetObject->getHighestDataRow();
