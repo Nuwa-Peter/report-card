@@ -22,9 +22,19 @@ if (empty($username) || empty($password)) {
 }
 
 try {
-    $stmt = $pdo->prepare("SELECT id, username, password_hash, role FROM users WHERE username = :username OR email = :username_as_email LIMIT 1");
-    $stmt->execute([':username' => $username, ':username_as_email' => $username]); // Allow login with username or email
+    // Attempt to fetch user by username or email first
+    $stmt = $pdo->prepare("SELECT id, username, password_hash, role, email, phone_number FROM users WHERE username = :login_identifier OR email = :login_identifier LIMIT 1");
+    $stmt->execute([':login_identifier' => $username]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    // If not found by username/email, and if the input might be a phone number, try by phone number
+    // Basic check: is it numeric and within a reasonable length for a phone number?
+    // This is a loose check; more sophisticated phone number validation could be added.
+    if (!$user && is_numeric($username) && strlen($username) >= 7 && strlen($username) <= 15) {
+        $stmt = $pdo->prepare("SELECT id, username, password_hash, role, email, phone_number FROM users WHERE phone_number = :phone LIMIT 1");
+        $stmt->execute([':phone' => $username]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    }
 
     if ($user && password_verify($password, $user['password_hash'])) {
         // Password is correct, start session

@@ -66,6 +66,7 @@ CREATE TABLE `users` (
   `role` enum('superadmin','admin','teacher','student','parent') NOT NULL DEFAULT 'teacher', -- Adjust roles as needed
   `full_name` varchar(150) DEFAULT NULL,
   `email` varchar(100) DEFAULT NULL,
+  `phone_number` varchar(20) DEFAULT NULL,
   `is_active` tinyint(1) NOT NULL DEFAULT 1,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
@@ -73,7 +74,8 @@ CREATE TABLE `users` (
   `last_dismissed_admin_activity_ts` timestamp NULL DEFAULT NULL COMMENT 'For superadmin activity feed dismissal',
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`),
-  UNIQUE KEY `email` (`email`)
+  UNIQUE KEY `email` (`email`),
+  UNIQUE KEY `unique_phone_number` (`phone_number`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
