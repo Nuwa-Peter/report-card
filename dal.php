@@ -514,39 +514,53 @@ function getSubjectIdByCode(PDO $pdo, string $subjectCode): ?int {
  * @param int $studentId
  * @param string $studentName
  * @param string|null $linNo
- * @return bool True on success, false on failure or if no changes were made.
+ * @param int|null $classId Optional: The class ID to set as current_class_id.
+ * @return bool True on success (even if no DB rows affected but data matched), false on error.
  */
-function updateStudentDetails(PDO $pdo, int $studentId, string $studentName, ?string $linNo): bool {
+function updateStudentDetailsAndClass(PDO $pdo, int $studentId, string $studentName, ?string $linNo, ?int $classId = null): bool {
     $studentNameUpper = strtoupper(trim($studentName));
     $linNoClean = !empty($linNo) ? trim($linNo) : null;
 
     // Check if student exists
-    $stmtCheck = $pdo->prepare("SELECT student_name, lin_no FROM students WHERE id = :id");
+    $stmtCheck = $pdo->prepare("SELECT student_name, lin_no, current_class_id FROM students WHERE id = :id");
     $stmtCheck->execute([':id' => $studentId]);
     $currentDetails = $stmtCheck->fetch(PDO::FETCH_ASSOC);
 
     if (!$currentDetails) {
-        error_log("DAL Error: updateStudentDetails failed. Student ID $studentId not found.");
+        error_log("DAL Error: updateStudentDetailsAndClass failed. Student ID $studentId not found.");
         return false; // Student not found
     }
 
-    // Only update if details have changed
-    if ($currentDetails['student_name'] === $studentNameUpper && $currentDetails['lin_no'] === $linNoClean) {
+    $updateFields = [];
+    $params = [':id' => $studentId];
+
+    if ($currentDetails['student_name'] !== $studentNameUpper) {
+        $updateFields[] = "student_name = :student_name";
+        $params[':student_name'] = $studentNameUpper;
+    }
+    if ($currentDetails['lin_no'] !== $linNoClean) {
+        $updateFields[] = "lin_no = :lin_no";
+        $params[':lin_no'] = $linNoClean;
+    }
+    if ($classId !== null && (int)$currentDetails['current_class_id'] !== (int)$classId) {
+        $updateFields[] = "current_class_id = :class_id";
+        $params[':class_id'] = $classId;
+    }
+
+    if (empty($updateFields)) {
         return true; // No changes needed, considered success
     }
 
     try {
-        // Removed updated_at = NOW() as it's likely not in the user's table schema
-        $sql = "UPDATE students SET student_name = :student_name, lin_no = :lin_no WHERE id = :id";
+        $sql = "UPDATE students SET " . implode(', ', $updateFields) . " WHERE id = :id";
         $stmt = $pdo->prepare($sql);
-        $stmt->execute([
-            ':student_name' => $studentNameUpper,
-            ':lin_no' => $linNoClean,
-            ':id' => $studentId
-        ]);
-        return $stmt->rowCount() > 0;
+        $stmt->execute($params);
+        // rowCount() might be 0 if the final state is the same due to other reasons,
+        // but if execute() doesn't throw, we consider it a success for this logic.
+        // The calling code should check original values if it needs to know if DB was touched.
+        return true;
     } catch (PDOException $e) {
-        error_log("DAL Error: updateStudentDetails failed for Student ID $studentId. Error: " . $e->getMessage());
+        error_log("DAL Error: updateStudentDetailsAndClass failed for Student ID $studentId. Error: " . $e->getMessage() . " | SQL: $sql | Params: " . json_encode($params));
         return false;
     }
 }

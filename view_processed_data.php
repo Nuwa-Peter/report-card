@@ -315,6 +315,7 @@ if (isset($_SESSION['processed_for_fuzzy_check'])) unset($_SESSION['processed_fo
                                 <?php foreach ($uniqueSubjectCodesInBatch as $subjectCode => $subjectFullName): ?>
                                     <th colspan="3" class="text-center"><?php echo htmlspecialchars($subjectFullName); ?></th>
                                 <?php endforeach; ?>
+                                <th rowspan="2" style="vertical-align:middle;" class="actions-col score-input" style="display: none;">Actions</th> <!-- Hidden by default, shown in edit mode -->
                             </tr>
                             <tr>
                                 <?php foreach ($uniqueSubjectCodesInBatch as $subjectCode => $subjectFullName): ?>
@@ -322,6 +323,7 @@ if (isset($_SESSION['processed_for_fuzzy_check'])) unset($_SESSION['processed_fo
                                     <th>MOT</th>
                                     <th>EOT</th>
                                 <?php endforeach; ?>
+                                <!-- No extra th needed here for actions due to rowspan -->
                             </tr>
                         </thead>
                         <tbody>
@@ -376,11 +378,21 @@ if (isset($_SESSION['processed_for_fuzzy_check'])) unset($_SESSION['processed_fo
                                             <?php endif; ?>
                                         </td>
                                     <?php endforeach; ?>
+                                    <td class="actions-col score-input" style="display: none;">
+                                        <button type="button" class="btn btn-danger btn-sm delete-student-from-batch-btn"
+                                                data-student-id="<?php echo $studentId; ?>"
+                                                data-student-name="<?php echo htmlspecialchars($studentData['student_name']); ?>"
+                                                title="Delete student from this batch">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </td>
                                 </tr>
                             <?php endforeach; ?>
                             <!-- Template row for new student -->
                             <tr id="newStudentTemplateRow" style="display: none;">
-                                <td>New</td>
+                                <td>
+                                    <button type="button" class="btn btn-danger btn-sm remove-new-student-row-btn" title="Remove this new student row"><i class="fas fa-minus-circle"></i></button>
+                                </td>
                                 <td class="student-name-col">
                                     <input type="text" name="new_student[0][name]" class="form-control form-control-sm" placeholder="Student Name">
                                 </td>
@@ -700,8 +712,13 @@ if (isset($_SESSION['processed_for_fuzzy_check'])) unset($_SESSION['processed_fo
 
                 if (editModeButtons) editModeButtons.style.display = isEditing ? 'flex' : 'none';
                 if (enableEditingBtn) enableEditingBtn.style.display = isEditing ? 'none' : '';
+
+                const actionCols = scoresTable.querySelectorAll('.actions-col');
+                actionCols.forEach(col => col.style.display = isEditing ? '' : 'none');
+
                 if (newStudentTemplateRow) newStudentTemplateRow.style.display = isEditing ? '' : 'none';
                 if (addStudentBtnContainer) addStudentBtnContainer.style.display = isEditing ? 'flex': 'none';
+
 
                  // If enabling editing and no students exist, make the table visible
                 if (isEditing && scoresTable.style.display === 'none' && <?php echo empty($studentsWithScores) ? 'true' : 'false'; ?>) {
@@ -771,13 +788,22 @@ if (isset($_SESSION['processed_for_fuzzy_check'])) unset($_SESSION['processed_fo
                     // Add remove button to the first cell (where '#' or 'New' is)
                     // Check if first cell exists
                     if(newRow.cells.length > 0) {
-                        // If we want to replace "New" with the button or add it next to it.
-                        // For simplicity, let's append it to the first cell's content.
-                        // Or create a new cell specifically for actions.
-                        // Let's add it to the first cell for now, replacing its content.
-                        newRow.cells[0].innerHTML = ''; // Clear "New"
-                        newRow.cells[0].appendChild(removeBtn);
+                        // The first cell of the template row is now designated for the remove button
+                        const firstCell = newRow.cells[0];
+                        firstCell.innerHTML = ''; // Clear its template content (like "New" or old button)
+                        const newRemoveBtn = document.createElement('button');
+                        newRemoveBtn.type = 'button';
+                        newRemoveBtn.className = 'btn btn-danger btn-sm remove-new-student-row-btn';
+                        newRemoveBtn.title = 'Remove this new student row';
+                        newRemoveBtn.innerHTML = '<i class="fas fa-minus-circle"></i>';
+                        newRemoveBtn.onclick = function() { newRow.remove(); /* TODO: Consider re-indexing or managing gaps if needed */ };
+                        firstCell.appendChild(newRemoveBtn);
                     }
+                    // Add an empty TD for the "Actions" column for new rows as well
+                    const actionsCell = document.createElement('td');
+                    actionsCell.className = 'actions-col score-input'; // Keep consistent class for show/hide
+                    actionsCell.style.display = newStudentTemplateRow.querySelector('.actions-col')?.style.display || ''; // Match visibility
+                    newRow.appendChild(actionsCell);
 
 
                     // scoresTable.querySelector('tbody').appendChild(newRow); // Appends to end
@@ -878,15 +904,46 @@ if (isset($_SESSION['processed_for_fuzzy_check'])) unset($_SESSION['processed_fo
             // This is a basic full-page submission. AJAX would be an enhancement.
             if (studentModalForm) {
                 studentModalForm.addEventListener('submit', function(e) {
-                    // The form will submit to handle_edit_marks.php
-                    // We need to ensure the data from modal_scores is transformed into
-                    // the format handle_edit_marks.php expects for 'students' or 'new_student' arrays.
-                    // This will be handled by PHP in handle_edit_marks.php by looking at modal_action.
-                    // For now, no special JS transformation is done here before submit,
-                    // relying on backend to interpret modal_ prefixed fields.
-                    // A loading indicator could be shown here.
+                    // ... (existing modal submission logic) ...
                 });
             }
+
+            // --- Add event listeners for delete buttons ---
+            scoresTable.addEventListener('click', function(event) {
+                let targetButton = event.target;
+                if (targetButton.tagName === 'I' && targetButton.parentElement.classList.contains('delete-student-from-batch-btn')) {
+                    targetButton = targetButton.parentElement; // Target the button itself
+                }
+
+                if (targetButton.classList.contains('delete-student-from-batch-btn')) {
+                    const studentId = targetButton.dataset.studentId;
+                    const studentName = targetButton.dataset.studentName;
+                    const batchId = <?php echo json_encode($batch_id); ?>;
+
+                    if (confirm(`Are you sure you want to remove "${studentName}" (ID: ${studentId}) from this batch (Batch ID: ${batchId})?\nThis will delete their scores and summary for this batch only. The student record itself will not be deleted from the system.`)) {
+                        // Redirect to a handler script (to be created)
+                        window.location.href = `handle_delete_student_from_batch.php?student_id=${studentId}&batch_id=${batchId}`;
+                    }
+                }
+
+                // Handle removal of newly added (but not yet saved) student rows
+                if (targetButton.tagName === 'I' && targetButton.parentElement.classList.contains('remove-new-student-row-btn')) {
+                    targetButton = targetButton.parentElement;
+                }
+                if (targetButton.classList.contains('remove-new-student-row-btn')) {
+                     // Ensure it's not the template row itself if we decide to protect it,
+                     // but currently, the template row's button also has this class.
+                     // The template row is typically handled by display:none rather than removing its button's functionality.
+                    const rowToRemove = targetButton.closest('tr');
+                    if (rowToRemove && rowToRemove.id !== 'newStudentTemplateRow') { // Don't remove the template itself
+                        rowToRemove.remove();
+                    } else if (rowToRemove && rowToRemove.id === 'newStudentTemplateRow') {
+                        // If it's the template row, just clear its inputs
+                         rowToRemove.querySelectorAll('input[type="text"]').forEach(input => input.value = '');
+                    }
+                }
+            });
+
         });
     </script>
 </body>

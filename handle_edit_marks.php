@@ -30,8 +30,23 @@ if (!$batch_id) {
 
 $hasErrors = false;
 $changesMade = 0;
+$studentDetailChanges = 0; // Specifically for name/LIN
+$scoreUpserts = 0; // Specifically for score changes/additions
+$newStudentsAddedCount = 0;
+
 $studentDataProcessed = false; // Flag to indicate if any student data was in the POST
 $modalAction = filter_input(INPUT_POST, 'modal_action', FILTER_SANITIZE_STRING);
+
+// Get class_id for the current batch to update students.current_class_id
+$batchSettings = getReportBatchSettings($pdo, $batch_id);
+if (!$batchSettings) {
+    // This should ideally not happen if batch_id is validated, but as a safeguard
+    $_SESSION['error_message'] = "Cannot retrieve batch settings. Update aborted.";
+    header('Location: view_processed_data.php?batch_id=' . $batch_id);
+    exit;
+}
+$current_batch_class_id = $batchSettings['class_id'];
+
 
 try {
     $pdo->beginTransaction();
@@ -55,8 +70,14 @@ try {
                     $hasErrors = true;
                     error_log("Modal Add: Failed to upsert new student: $modalStudentName, LIN: $modalStudentLin for batch $batch_id");
                 } else {
-                    logActivity($pdo, $_SESSION['user_id'], $_SESSION['username'], 'STUDENT_ADDED_VIA_MODAL', "Added new student '" . htmlspecialchars($modalStudentName) . "' (ID: $student_id) to batch ID $batch_id via modal.", 'student', $student_id);
-                    $changesMade++;
+                    // Explicitly update current_class_id for the new student
+                    $stmtUpdateClass = $pdo->prepare("UPDATE students SET current_class_id = :class_id WHERE id = :student_id");
+                    $stmtUpdateClass->execute([':class_id' => $current_batch_class_id, ':student_id' => $student_id]);
+
+                    logActivity($pdo, $_SESSION['user_id'], $_SESSION['username'], 'STUDENT_ADDED_VIA_MODAL', "Added new student '" . htmlspecialchars($modalStudentName) . "' (ID: $student_id, ClassID: $current_batch_class_id) to batch ID $batch_id via modal.", 'student', $student_id);
+                    $newStudentsAddedCount++;
+                    $changesMade++; // Count student addition
+
                     // Process scores for the new student
                     foreach ($modalScores as $subject_code => $scoreData) {
                         $subject_id_from_modal = filter_var($scoreData['subject_id'] ?? null, FILTER_VALIDATE_INT);
@@ -83,11 +104,26 @@ try {
                     $hasErrors = true;
                     error_log("Modal Edit: Invalid student_id for batch $batch_id");
                 } else {
-                    // Update student details
-                    if (updateStudentDetails($pdo, $student_id, $modalStudentName, $modalStudentLin)) {
-                        // Check if name/lin actually changed to count as a change
-                        // This requires fetching current details first, or updateStudentDetails returning more info.
-                        // For simplicity, we'll count score changes primarily.
+                    // Store original details for logging comparison
+                    $stmtOrigStudent = $pdo->prepare("SELECT student_name, lin_no, current_class_id FROM students WHERE id = :id");
+                    $stmtOrigStudent->execute([':id' => $student_id]);
+                    $originalStudentDetails = $stmtOrigStudent->fetch(PDO::FETCH_ASSOC);
+
+                    // Update student details (name, LIN, and current_class_id)
+                    if (updateStudentDetailsAndClass($pdo, $student_id, $modalStudentName, $modalStudentLin, $current_batch_class_id)) {
+                        $detailChangeDescription = [];
+                        if ($originalStudentDetails['student_name'] !== strtoupper($modalStudentName)) $detailChangeDescription[] = "Name";
+                        if ($originalStudentDetails['lin_no'] !== $modalStudentLin) $detailChangeDescription[] = "LIN";
+                        if ($originalStudentDetails['current_class_id'] !== $current_batch_class_id) $detailChangeDescription[] = "ClassID";
+
+                        if (!empty($detailChangeDescription)) {
+                            logActivity($pdo, $_SESSION['user_id'], $_SESSION['username'], 'STUDENT_DETAILS_EDITED_MODAL', "Edited details (" . implode(', ', $detailChangeDescription) . ") for " . htmlspecialchars($modalStudentName) . " (ID: $student_id) via modal.", 'student', $student_id);
+                            $studentDetailChanges++;
+                            $changesMade++;
+                        }
+                    } else {
+                         error_log("Modal Edit: Failed to update details for student ID $student_id (Name: $modalStudentName, LIN: $modalStudentLin, ClassID: $current_batch_class_id)");
+                         // Potentially set $hasErrors = true if this is critical
                     }
 
                     // Process scores for the existing student
@@ -105,28 +141,35 @@ try {
                         $mot_s = ($mot === '' || $mot === null) ? null : (is_numeric($mot) ? (float)$mot : null);
                         $eot_s = ($eot === '' || $eot === null) ? null : (is_numeric($eot) ? (float)$eot : null);
 
-                        // Fetch original scores for logging comparison
                         $stmtOrig = $pdo->prepare("SELECT bot_score, mot_score, eot_score FROM scores WHERE report_batch_id = :rbid AND student_id = :sid AND subject_id = :subid");
                         $stmtOrig->execute([':rbid' => $batch_id, ':sid' => $student_id, ':subid' => $subject_id_from_modal]);
                         $originalModalScores = $stmtOrig->fetch(PDO::FETCH_ASSOC);
 
                         if (upsertScore($pdo, $batch_id, $student_id, $subject_id_from_modal, $bot_s, $mot_s, $eot_s)) {
-                            $changesMade++; // Count each score upsert as a change
-                            $changedFieldsForSubject = [];
-                            if ($originalModalScores === false || $originalModalScores['bot_score'] != $bot_s) $changedFieldsForSubject[] = "BOT";
-                            if ($originalModalScores === false || $originalModalScores['mot_score'] != $mot_s) $changedFieldsForSubject[] = "MOT";
-                            if ($originalModalScores === false || $originalModalScores['eot_score'] != $eot_s) $changedFieldsForSubject[] = "EOT";
-                            if(!empty($changedFieldsForSubject)) {
-                                $scoreChangesForLog[] = "$subject_code (" . implode(',', $changedFieldsForSubject) . ")";
+                            // Check if upsertScore actually changed something
+                            $scoreActuallyChanged = false;
+                            if ($originalModalScores === false ||
+                                $originalModalScores['bot_score'] != $bot_s ||
+                                $originalModalScores['mot_score'] != $mot_s ||
+                                $originalModalScores['eot_score'] != $eot_s) {
+                                $scoreActuallyChanged = true;
+                            }
+
+                            if ($scoreActuallyChanged) {
+                                $scoreUpserts++;
+                                $changesMade++;
+                                $changedFieldsForSubject = [];
+                                if ($originalModalScores === false || $originalModalScores['bot_score'] != $bot_s) $changedFieldsForSubject[] = "BOT";
+                                if ($originalModalScores === false || $originalModalScores['mot_score'] != $mot_s) $changedFieldsForSubject[] = "MOT";
+                                if ($originalModalScores === false || $originalModalScores['eot_score'] != $eot_s) $changedFieldsForSubject[] = "EOT";
+                                if(!empty($changedFieldsForSubject)) {
+                                    $scoreChangesForLog[] = "$subject_code (" . implode(',', $changedFieldsForSubject) . ")";
+                                }
                             }
                         }
                     }
                     if (!empty($scoreChangesForLog)) {
                          logActivity($pdo, $_SESSION['user_id'], $_SESSION['username'], 'MARKS_EDITED_VIA_MODAL', "Edited marks for " . htmlspecialchars($modalStudentName) . " (ID: $student_id) in batch ID $batch_id via modal. Changes: " . implode('; ', $scoreChangesForLog) , 'student', $student_id);
-                    } else {
-                        // Log if only name/lin changed? updateStudentDetails might need to return more info
-                        // For now, if no score changes, we assume name/lin change was the primary edit if $changesMade is still 0 but updateStudentDetails was successful.
-                        // This needs refinement if we want to log "name changed" separately.
                     }
                 }
             }
@@ -158,17 +201,43 @@ try {
             // For now, we'll focus on scores. The current `upsertStudent` could be called if we want to ensure the student exists.
             // However, an existing student *should* exist.
 
-            // Update student details if they changed
-            // The updateStudentDetails function in DAL handles checking if an update is actually needed.
-            if (updateStudentDetails($pdo, $student_id, $student_name, $lin_no)) {
-                // Optionally count this as a change if rowCount > 0, but upsertScore change is more significant for "marks updated"
+            // Update student details (name, LIN, and current_class_id)
+            $studentNameCaps = strtoupper($student_name); // Name from form
+            $originalStudentDetails_table = null; // To store fetched details
+
+            $stmtOrigStudent_table = $pdo->prepare("SELECT student_name, lin_no, current_class_id FROM students WHERE id = :id");
+            $stmtOrigStudent_table->execute([':id' => $student_id]);
+            $originalStudentDetails_table = $stmtOrigStudent_table->fetch(PDO::FETCH_ASSOC);
+
+            if ($originalStudentDetails_table) {
+                $detailsActuallyChanged_table = (
+                    $originalStudentDetails_table['student_name'] !== $studentNameCaps ||
+                    $originalStudentDetails_table['lin_no'] !== $lin_no ||
+                    (int)$originalStudentDetails_table['current_class_id'] !== (int)$current_batch_class_id
+                );
+
+                if ($detailsActuallyChanged_table) {
+                    if (updateStudentDetailsAndClass($pdo, $student_id, $student_name, $lin_no, $current_batch_class_id)) {
+                        $detailChangeDescription_table = [];
+                        if ($originalStudentDetails_table['student_name'] !== $studentNameCaps) $detailChangeDescription_table[] = "Name";
+                        if ($originalStudentDetails_table['lin_no'] !== $lin_no) $detailChangeDescription_table[] = "LIN";
+                        if ((int)$originalStudentDetails_table['current_class_id'] !== (int)$current_batch_class_id) $detailChangeDescription_table[] = "ClassID";
+
+                        if(!empty($detailChangeDescription_table)){
+                             logActivity($pdo, $_SESSION['user_id'], $_SESSION['username'], 'STUDENT_DETAILS_EDITED_TABLE', "Edited details (" . implode(', ', $detailChangeDescription_table) . ") for student " . htmlspecialchars($student_name) . " (ID: $student_id) via table.", 'student', $student_id);
+                             $studentDetailChanges++;
+                             $changesMade++;
+                        }
+                    } else {
+                        error_log("Table Edit: Failed to update details for student ID $student_id (Name: $student_name, LIN: $lin_no, ClassID: $current_batch_class_id)");
+                    }
+                }
             } else {
-                // Potential error updating student details, though function logs it.
-                // Decide if this should make $hasErrors = true;
+                 error_log("Table Edit: Could not fetch original details for student ID $student_id to compare for update.");
             }
 
-
             if (isset($studentData['scores']) && is_array($studentData['scores'])) {
+                $scoreChangesForLog_table = []; // Reset for each student
                 foreach ($studentData['scores'] as $subject_code_key => $scoreData) {
                     $subject_id = filter_var($scoreData['subject_id'] ?? null, FILTER_VALIDATE_INT);
 
@@ -208,31 +277,39 @@ try {
                     $originalScores = $stmtOrigScore->fetch(PDO::FETCH_ASSOC);
 
                     if (upsertScore($pdo, $batch_id, $student_id, $subject_id, $bot_score, $mot_score, $eot_score)) {
-                        $changesMade++;
-                        // Log if scores actually changed
-                        $changedFields = [];
-                        if ($originalScores === false || $originalScores['bot_score'] != $bot_score) $changedFields[] = "BOT";
-                        if ($originalScores === false || $originalScores['mot_score'] != $mot_score) $changedFields[] = "MOT";
-                        if ($originalScores === false || $originalScores['eot_score'] != $eot_score) $changedFields[] = "EOT";
+                        // Check if upsertScore actually changed something (it returns true if rowCount > 0)
+                        $scoreActuallyChanged_table = false;
+                        if ($originalScores === false ||
+                            $originalScores['bot_score'] != $bot_score ||
+                            $originalScores['mot_score'] != $mot_score ||
+                            $originalScores['eot_score'] != $eot_score) {
+                            $scoreActuallyChanged_table = true;
+                        }
 
-                        if (!empty($changedFields)) {
-                             // Need subject name for a better description
-                            $stmtSubjName = $pdo->prepare("SELECT subject_name_full FROM subjects WHERE id = :subid");
-                            $stmtSubjName->execute([':subid' => $subject_id]);
-                            $subjectName = $stmtSubjName->fetchColumn() ?: "Subject ID $subject_id";
+                        if ($scoreActuallyChanged_table) {
+                            $scoreUpserts++;
+                            $changesMade++;
+                            $changedFields_table = [];
+                            if ($originalScores === false || $originalScores['bot_score'] != $bot_score) $changedFields_table[] = "BOT";
+                            if ($originalScores === false || $originalScores['mot_score'] != $mot_score) $changedFields_table[] = "MOT";
+                            if ($originalScores === false || $originalScores['eot_score'] != $eot_score) $changedFields_table[] = "EOT";
 
-                            logActivity(
-                                $pdo,
-                                $_SESSION['user_id'],
-                                $_SESSION['username'],
-                                'MARKS_EDITED',
-                                "Edited " . implode(', ', $changedFields) . " for " . htmlspecialchars($subjectName) . " - student '" . htmlspecialchars($student_name) . "' (ID: $student_id) in batch ID $batch_id.",
-                                'student',
-                                $student_id,
-                                null // No specific user to notify for this action, it's a general log.
-                            );
+                            if (!empty($changedFields_table)) {
+                                $scoreChangesForLog_table[] = "$subject_code_key (" . implode(',', $changedFields_table) . ")";
+                            }
                         }
                     }
+                }
+                 if (!empty($scoreChangesForLog_table)) {
+                    logActivity(
+                        $pdo,
+                        $_SESSION['user_id'],
+                        $_SESSION['username'],
+                        'MARKS_EDITED_TABLE',
+                        "Edited marks for student '" . htmlspecialchars($student_name) . "' (ID: $student_id) in batch ID $batch_id via table. Changes: " . implode('; ', $scoreChangesForLog_table),
+                        'student',
+                        $student_id
+                    );
                 }
             }
         }
@@ -240,8 +317,8 @@ try {
 
     // Process new students
     if (isset($_POST['new_student']) && is_array($_POST['new_student']) && !empty($_POST['new_student'])) {
-        $studentDataProcessed = true; // Mark that we are processing student data
-        foreach ($_POST['new_student'] as $key => $newStudentData) { // Added $key for potential logging
+        $studentDataProcessed = true;
+        foreach ($_POST['new_student'] as $key => $newStudentData) {
 
             // Check if 'name' key exists and its value is not empty after trimming
             if (!isset($newStudentData['name']) || trim((string)$newStudentData['name']) === '') {
@@ -271,17 +348,21 @@ try {
                 $hasErrors = true;
                 continue;
             }
-            // Log student addition
+
+            // Explicitly update current_class_id for the new student
+            $stmtUpdateClassNew = $pdo->prepare("UPDATE students SET current_class_id = :class_id WHERE id = :student_id");
+            $stmtUpdateClassNew->execute([':class_id' => $current_batch_class_id, ':student_id' => $new_student_id]);
+
             logActivity(
                 $pdo,
                 $_SESSION['user_id'],
                 $_SESSION['username'],
                 'STUDENT_ADDED_TO_BATCH',
-                "Added new student '" . htmlspecialchars($student_name) . "' (ID: $new_student_id) to batch ID $batch_id.", // Corrected variable
+                "Added new student '" . htmlspecialchars($student_name) . "' (ID: $new_student_id, ClassID: $current_batch_class_id) to batch ID $batch_id.",
                 'student',
-                $new_student_id,
-                null
+                $new_student_id
             );
+            $newStudentsAddedCount++;
             $changesMade++;
 
             // 2. Add their scores
@@ -324,28 +405,29 @@ try {
 
     // Set the flag if any student data was processed and there were no overriding errors during commit.
     // $changesMade can still be used for a more nuanced success message.
-    if ($studentDataProcessed && !$hasErrors) { // If we attempted to process any student data and no major error stopped us
-        $_SESSION['batch_data_changed_for_calc'][$batch_id] = true;
-    }
-
-    if ($changesMade > 0) {
-        // The flag is already set if $studentDataProcessed was true.
-        // The success message itself will prompt recalculation.
-        $_SESSION['success_message'] = "Data updated successfully. Made $changesMade change(s).";
-    } else if ($hasErrors) { // If $hasErrors is true, it means a significant issue occurred (e.g., failed to upsert new student)
-        $_SESSION['error_message'] = "Some errors occurred during the update. Please check the data and try again. Recalculation might be needed if some changes went through partially.";
-        // If errors occurred, it's safer to assume calculations are needed if any data might have been touched.
-        if ($studentDataProcessed) { // Even with errors, if we started processing, flag for recalculation.
+    if ($studentDataProcessed && !$hasErrors) {
+        // Only set recalc flag if actual student details, scores, or new students were processed.
+        if ($studentDetailChanges > 0 || $scoreUpserts > 0 || $newStudentsAddedCount > 0) {
             $_SESSION['batch_data_changed_for_calc'][$batch_id] = true;
         }
-    } else if ($studentDataProcessed && $changesMade == 0) { // Data was processed, but no actual changes were made to DB (e.g. submitted identical data)
-         $_SESSION['info_message'] = "No effective changes were made to the data.";
-         // In this specific case (data submitted was identical to DB), we might not need to force recalc.
-         // However, the current logic of upsertScore returning rowCount > 0 for $changesMade handles this.
-         // If $changesMade is 0, it implies no actual DB rows were affected.
-         // For simplicity, if studentDataProcessed is true and no errors, we set the flag.
-         // The user can decide if they want to recalculate. The warning will show.
-    } else if (!$studentDataProcessed) { // No student data in POST
+    }
+
+    // Construct a more detailed success/info message
+    $messageParts = [];
+    if ($newStudentsAddedCount > 0) $messageParts[] = "$newStudentsAddedCount student(s) added";
+    if ($studentDetailChanges > 0) $messageParts[] = "details updated for $studentDetailChanges student(s)";
+    if ($scoreUpserts > 0) $messageParts[] = "scores updated for $scoreUpserts student-subject entry/entries";
+
+    if (!empty($messageParts)) {
+        $_SESSION['success_message'] = "Data updated: " . implode(', ', $messageParts) . ".";
+    } elseif ($hasErrors) {
+        $_SESSION['error_message'] = "Some errors occurred during the update. Please check the data and try again. Recalculation might be needed if some changes went through partially.";
+        if ($studentDataProcessed) {
+            $_SESSION['batch_data_changed_for_calc'][$batch_id] = true;
+        }
+    } elseif ($studentDataProcessed) {
+         $_SESSION['info_message'] = "No effective changes were made to the data (submitted data may have matched existing data).";
+    } elseif (!$studentDataProcessed) {
         $_SESSION['info_message'] = "No student data was submitted for update.";
     }
 
