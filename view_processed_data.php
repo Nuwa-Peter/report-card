@@ -166,8 +166,8 @@ if (isset($_SESSION['processed_for_fuzzy_check'])) unset($_SESSION['processed_fo
         .highlight-row td { /* Apply to TD for full row highlight - DB Duplicates */
             background-color: #fff3cd !important; /* Light yellow highlight */
         }
-        .fuzzy-match-highlight td { /* Fuzzy matches highlight */
-            background-color: #e2e3e5 !important; /* Light grey/blueish highlight */
+        .fuzzy-match-highlight td { /* Fuzzy matches highlight - NOW RED */
+            background-color: #f8d7da !important; /* Bootstrap's alert-danger light red */
         }
         .missing-data-indicator {
             color: #dc3545; /* Red color for missing data */
