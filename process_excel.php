@@ -24,6 +24,14 @@ require 'db_connection.php';
 
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
+// Helper function to create a sorted key for pairs (used in fuzzy matching)
+if (!function_exists('sorted_array_values_for_key')) {
+    function sorted_array_values_for_key(array $array): array {
+        sort($array, SORT_STRING);
+        return $array;
+    }
+}
+
 $_SESSION['error_message'] = null;
 $_SESSION['success_message'] = null;
 // For original duplicate checking (student name exists in DB with different LIN/ID)
