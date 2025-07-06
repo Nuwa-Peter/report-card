@@ -61,6 +61,21 @@ $subjectDisplayNames = [
     'lit2' => 'Literacy II', 'local_lang' => 'Local Language'
 ];
 
+// --- Potential Duplicate Highlighting Logic ---
+$flaggedStudentIdsForHighlight = [];
+if (isset($_SESSION['potential_duplicates_found']) && is_array($_SESSION['potential_duplicates_found'])) {
+    foreach ($_SESSION['potential_duplicates_found'] as $dupInfo) {
+        if (isset($dupInfo['processed_student_id'])) {
+            $flaggedStudentIdsForHighlight[] = $dupInfo['processed_student_id'];
+        }
+    }
+    // Unset session variables after use to prevent stale highlighting on other pages or refreshes
+    unset($_SESSION['potential_duplicates_found']);
+    if (isset($_SESSION['flagged_duplicates_this_run'])) {
+        unset($_SESSION['flagged_duplicates_this_run']);
+    }
+}
+// --- End Potential Duplicate Highlighting Logic ---
 
 ?>
 <!DOCTYPE html>
@@ -228,6 +243,11 @@ $subjectDisplayNames = [
         </div>
 
         <h3 class="mt-4 mb-3">Student Raw Scores</h3>
+        <?php if (!empty($flaggedStudentIdsForHighlight)): ?>
+            <div class="alert alert-info" role="alert">
+                <i class="fas fa-info-circle"></i> Rows highlighted in yellow (<span style="background-color: #fff3cd; padding: 0.2em 0.4em;">like this</span>) indicate students flagged as potential duplicates during the import process. Please review them.
+            </div>
+        <?php endif; ?>
         <form id="editMarksForm" action="handle_edit_marks.php" method="post">
             <input type="hidden" name="batch_id" value="<?php echo $batch_id; ?>">
             <div class="mb-3 text-center" id="editModeButtons" style="display: none;">
@@ -256,8 +276,13 @@ $subjectDisplayNames = [
                             </tr>
                         </thead>
                         <tbody>
-                            <?php $count = 0; foreach ($studentsWithScores as $studentId => $studentData): $count++; ?>
-                                <tr data-student-id="<?php echo $studentId; ?>">
+                            <?php $count = 0; foreach ($studentsWithScores as $studentId => $studentData): $count++;
+                                $rowClass = '';
+                                if (in_array($studentId, $flaggedStudentIdsForHighlight)) {
+                                    $rowClass = 'highlight-row'; // This class is defined in the <style> block
+                                }
+                            ?>
+                                <tr data-student-id="<?php echo $studentId; ?>" class="<?php echo $rowClass; ?>">
                                     <td><?php echo $count; ?>
                                         <input type="hidden" name="students[<?php echo $studentId; ?>][id]" value="<?php echo $studentId; ?>">
                                     </td>

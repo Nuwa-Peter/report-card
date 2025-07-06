@@ -90,6 +90,47 @@ if(isset($_SESSION['report_data']) && !isset($_SESSION['last_processed_batch_id'
             // Don't unset last_processed_batch_id here, might be needed if user navigates away and comes back.
             // Or, more robustly, view_processed_data.php should be the main interaction point for a batch.
         }
+
+        // Display Potential Duplicates Notification
+        if (isset($_SESSION['potential_duplicates_found']) && !empty($_SESSION['potential_duplicates_found'])) {
+            echo '<div class="alert alert-warning mt-3" role="alert">';
+            echo '<h4 class="alert-heading"><i class="fas fa-exclamation-triangle"></i> Potential Duplicates Found!</h4>';
+            echo '<p>The system detected potential duplicate student entries during the last upload. Please review these carefully. You can view the processed data to see these entries highlighted.</p>';
+            echo '<hr>';
+            echo '<ul>';
+            foreach ($_SESSION['potential_duplicates_found'] as $index => $dupInfo) {
+                echo '<li>';
+                echo '<strong>Student from Upload:</strong> ' . htmlspecialchars($dupInfo['processed_student_name']);
+                echo ' (Sheet: ' . htmlspecialchars($dupInfo['sheet_name']) . ', Row: ' . htmlspecialchars($dupInfo['sheet_row']);
+                if ($dupInfo['processed_student_lin']) {
+                    echo ', LIN: ' . htmlspecialchars($dupInfo['processed_student_lin']);
+                } else {
+                    echo ', No LIN provided';
+                }
+                echo ')';
+                echo '<ul>';
+                foreach ($dupInfo['matches'] as $match) {
+                    echo '<li><em>May match existing student:</em> ' . htmlspecialchars($match['db_student_name']);
+                    if ($match['db_lin_no']) {
+                        echo ' (DB LIN: ' . htmlspecialchars($match['db_lin_no']) . ')';
+                    } else {
+                        echo ' (DB: No LIN)';
+                    }
+                    echo ' (DB ID: '.htmlspecialchars($match['db_student_id']).')';
+                    echo '</li>';
+                }
+                echo '</ul>';
+                echo '</li>';
+            }
+            echo '</ul>';
+            if ($last_processed_batch_id) {
+                 echo '<p>When you <a href="view_processed_data.php?batch_id=' . htmlspecialchars($last_processed_batch_id) . '" class="alert-link">view the processed data for batch ' . htmlspecialchars($last_processed_batch_id) . '</a>, these potential duplicates will be highlighted.</p>';
+            }
+            echo '</div>';
+            // Session variables 'potential_duplicates_found' and 'flagged_duplicates_this_run'
+            // will be unset by view_processed_data.php after it uses them for highlighting,
+            // or by process_excel.php on a new upload.
+        }
         ?>
         <div class="text-center mb-4">
             <!-- Logo removed from here as it's in navbar -->

@@ -26,6 +26,8 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 
 $_SESSION['error_message'] = null;
 $_SESSION['success_message'] = null;
+$_SESSION['potential_duplicates_found'] = []; // Initialize potential duplicates array
+$_SESSION['flagged_duplicates_this_run'] = []; // Initialize for tracking duplicates within the current run
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     if (headers_sent()) { die('Invalid request method and headers already sent.'); }
@@ -320,6 +322,54 @@ try {
                 $stmtInsertStudent->execute([':name' => $studentNameAllCaps, ':class_id' => $classId, ':lin_no' => $linToStore]);
                 $studentId = $pdo->lastInsertId();
             }
+
+            // ---- START DUPLICATE DETECTION LOGIC ----
+            if ($studentId && !empty($studentNameAllCaps)) {
+                $stmtCheckDuplicates = $pdo->prepare(
+                    "SELECT id, student_name, lin_no FROM students
+                     WHERE student_name = :name_to_check AND id != :current_student_id"
+                );
+                $stmtCheckDuplicates->execute([
+                    ':name_to_check' => $studentNameAllCaps,
+                    ':current_student_id' => $studentId
+                ]);
+                $existingSameNameStudents = $stmtCheckDuplicates->fetchAll(PDO::FETCH_ASSOC);
+
+                if (!empty($existingSameNameStudents)) {
+                    // Check if this specific student (by ID and current LIN) has already been flagged in this session for THIS BATCH processing
+                    // This helps avoid multiple notifications for the same student if they appear in multiple subject sheets
+                    // We use a composite key for uniqueness within the session's flagged duplicates list
+                    $flagKey = $studentId . "_" . (is_null($linToStore) ? 'NULL_LIN' : $linToStore);
+
+                    $alreadyFlaggedThisSession = false;
+                    if(isset($_SESSION['flagged_duplicates_this_run']) && isset($_SESSION['flagged_duplicates_this_run'][$flagKey])) {
+                        $alreadyFlaggedThisSession = true;
+                    }
+
+                    if (!$alreadyFlaggedThisSession) {
+                        $duplicateDetails = [
+                            'processed_student_id' => $studentId, // ID of the student just processed/created
+                            'processed_student_name' => $studentNameAllCaps,
+                            'processed_student_lin' => $linToStore, // LIN from the sheet for this student
+                            'sheet_row' => $row, // We can record the first occurrence
+                            'sheet_name' => $sheetName, // We can record the first occurrence
+                            'matches' => []
+                        ];
+                        foreach ($existingSameNameStudents as $existingStudent) {
+                            $duplicateDetails['matches'][] = [
+                                'db_student_id' => $existingStudent['id'],
+                                'db_student_name' => $existingStudent['student_name'], // Should be same as $studentNameAllCaps
+                                'db_lin_no' => $existingStudent['lin_no']
+                            ];
+                        }
+                        $_SESSION['potential_duplicates_found'][] = $duplicateDetails;
+                        // Mark as flagged for this specific studentId-LIN combination for this run
+                        $_SESSION['flagged_duplicates_this_run'][$flagKey] = true;
+                        error_log("PROCESS_EXCEL: Potential duplicate flagged for student ID $studentId ($studentNameAllCaps), Row $row, Sheet '$sheetName'. Matches found: " . count($existingSameNameStudents));
+                    }
+                }
+            }
+            // ---- END DUPLICATE DETECTION LOGIC ----
 
             // Get scores
             $botScore = $currentSheetObject->getCell('C' . $row)->getValue();
