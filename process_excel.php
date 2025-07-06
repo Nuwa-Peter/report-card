@@ -26,8 +26,13 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 
 $_SESSION['error_message'] = null;
 $_SESSION['success_message'] = null;
-$_SESSION['potential_duplicates_found'] = []; // Initialize potential duplicates array
-$_SESSION['flagged_duplicates_this_run'] = []; // Initialize for tracking duplicates within the current run
+// For original duplicate checking (student name exists in DB with different LIN/ID)
+$_SESSION['potential_duplicates_found'] = [];
+$_SESSION['flagged_duplicates_this_run'] = [];
+// For new consistency checks
+$_SESSION['missing_students_warnings'] = [];
+$_SESSION['fuzzy_match_warnings'] = [];
+$_SESSION['processed_for_fuzzy_check'] = []; // Stores names from current file for fuzzy check
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     if (headers_sent()) { die('Invalid request method and headers already sent.'); }
@@ -116,6 +121,160 @@ try {
         }
     }
     // --- End Sheet Validation ---
+
+    // --- START PHASE 1: Pre-processing for consistency checks ---
+    $allStudentsDataFromFile = []; // Key: 'NAME_LIN', Value: ['name_raw', 'name_caps', 'lin', 'sheets_present' => [], 'first_occurrence' => ['sheet', 'row']]
+    $excelSheetNames = $spreadsheet->getSheetNames(); // Get all sheet names from the Excel file
+
+    // Map human-readable expected subject keys to their display names for warnings
+    $subjectKeyToDisplayNameMap = [];
+    foreach ($sheetNameToInternalCodeMap as $hrName => $internalCode) {
+        if (in_array($internalCode, $expectedSubjectInternalKeys)) {
+            // Attempt to get full name from DB for better display
+            $stmtFullSubjName = $pdo->prepare("SELECT subject_name_full FROM subjects WHERE subject_code = :code");
+            $stmtFullSubjName->execute([':code' => $internalCode]);
+            $dbSubjName = $stmtFullSubjName->fetchColumn();
+            $subjectKeyToDisplayNameMap[$internalCode] = $dbSubjName ?: ucfirst(str_replace('_', ' ', $internalCode));
+        }
+    }
+
+
+    foreach ($excelSheetNames as $sheetNameFromFile) {
+        $normalizedSheetName = strtolower(trim($sheetNameFromFile));
+        if (!isset($sheetNameToInternalCodeMap[$normalizedSheetName])) {
+            continue; // Skip sheets not in our map (e.g., "Instructions")
+        }
+        $subjectInternalKeyForSheet = $sheetNameToInternalCodeMap[$normalizedSheetName];
+
+        // Only process sheets that are expected for this class level
+        if (!in_array($subjectInternalKeyForSheet, $expectedSubjectInternalKeys)) {
+            continue;
+        }
+
+        $currentSheetObject = $spreadsheet->getSheetByName($sheetNameFromFile);
+        $headerLIN_pre = trim(strtoupper(strval($currentSheetObject->getCell('A1')->getValue())));
+        $headerName_pre = trim(strtoupper(strval($currentSheetObject->getCell('B1')->getValue())));
+        // Basic header check for pre-processing; more stringent check later
+        if ($headerLIN_pre !== 'LIN' || !in_array($headerName_pre, ['NAMES/NAME', 'NAMES', 'NAME'])) {
+            error_log("PRE-CHECK: Skipping sheet '$sheetNameFromFile' due to invalid headers for pre-processing.");
+            continue;
+        }
+
+        $highestRow = $currentSheetObject->getHighestDataRow();
+        for ($row = 2; $row <= $highestRow; $row++) {
+            $linValueRaw = trim(strval($currentSheetObject->getCell('A' . $row)->getValue()));
+            $studentNameRaw = trim(strval($currentSheetObject->getCell('B' . $row)->getValue()));
+
+            if (empty($studentNameRaw)) continue; // Skip if no student name
+
+            $studentNameAllCaps = strtoupper($studentNameRaw);
+            $linToUse = !empty($linValueRaw) ? $linValueRaw : null;
+            $studentIdentifierKey = $studentNameAllCaps . '_' . ($linToUse ?: 'NO_LIN');
+
+            if (!isset($allStudentsDataFromFile[$studentIdentifierKey])) {
+                $allStudentsDataFromFile[$studentIdentifierKey] = [
+                    'name_raw' => $studentNameRaw, // Keep original casing for display if needed
+                    'name_caps' => $studentNameAllCaps,
+                    'lin' => $linToUse,
+                    'sheets_present' => [],
+                    'first_occurrence' => ['sheet' => $sheetNameFromFile, 'row' => $row]
+                ];
+            }
+            if (!in_array($subjectInternalKeyForSheet, $allStudentsDataFromFile[$studentIdentifierKey]['sheets_present'])) {
+                $allStudentsDataFromFile[$studentIdentifierKey]['sheets_present'][] = $subjectInternalKeyForSheet;
+            }
+        }
+    }
+    // --- END PHASE 1 ---
+
+    // --- START "Missing Students Across Sheets" Detection ---
+    // Use $requiredSubjectInternalKeys for this check, as these are critical for positioning.
+    // Kiswahili is optional for P4-P7, so it's in $expectedSubjectInternalKeys but might not be in $requiredSubjectInternalKeys.
+    // If a subject is optional, a student missing from it isn't necessarily an error to flag this way.
+    // The definition of $requiredSubjectInternalKeys already correctly handles this.
+
+    $studentsMissingFromSheets = [];
+    foreach ($allStudentsDataFromFile as $studentIdKey => $studentData) {
+        $missingFrom = [];
+        foreach ($requiredSubjectInternalKeys as $requiredKey) {
+            if (!in_array($requiredKey, $studentData['sheets_present'])) {
+                $missingFrom[] = $subjectKeyToDisplayNameMap[$requiredKey] ?? ucfirst(str_replace('_', ' ', $requiredKey));
+            }
+        }
+        if (!empty($missingFrom)) {
+            $studentsMissingFromSheets[] = [
+                'name_raw' => $studentData['name_raw'],
+                'lin' => $studentData['lin'],
+                'missing_from_sheets' => $missingFrom,
+                'first_occurrence' => $studentData['first_occurrence'] // For context
+            ];
+        }
+    }
+    if (!empty($studentsMissingFromSheets)) {
+        $_SESSION['missing_students_warnings'] = $studentsMissingFromSheets;
+        error_log("PROCESS_EXCEL: Missing students from sheets warnings generated: " . count($studentsMissingFromSheets));
+    }
+    // --- END "Missing Students Across Sheets" Detection ---
+
+    // --- START Fuzzy Name Matching (within the same Excel file) ---
+    $uniqueStudentNamesFromFile = array_values($allStudentsDataFromFile); // Get a numerically indexed array of student data objects
+    $fuzzyMatchPairs = []; // To avoid duplicate pair reporting (e.g. A vs B and B vs A)
+
+    for ($i = 0; $i < count($uniqueStudentNamesFromFile); $i++) {
+        for ($j = $i + 1; $j < count($uniqueStudentNamesFromFile); $j++) {
+            $student1Data = $uniqueStudentNamesFromFile[$i];
+            $student2Data = $uniqueStudentNamesFromFile[$j];
+
+            // Use name_caps for Levenshtein comparison
+            $name1 = $student1Data['name_caps'];
+            $name2 = $student2Data['name_caps'];
+
+            if ($name1 === $name2) continue; // Skip if names are identical (already handled by unique key in $allStudentsDataFromFile if LINs are same)
+
+            $distance = levenshtein($name1, $name2);
+
+            // Define a threshold for "similar" - e.g., 1 or 2.
+            // Consider name length? Shorter names with distance 2 might be very different.
+            // For now, simple threshold.
+            $similarityThreshold = 2;
+            // Prevent flagging very short names if the distance is a significant portion of their length
+            // e.g. "IVY" vs "IVAN" is distance 1, but might be okay. "AN" vs "AX" is distance 1.
+            // Let's add a minimum length for names to be considered for fuzzy matching if distance is > 1
+            $minNameLengthForBroaderFuzzy = 4;
+
+            if ($distance > 0 && $distance <= $similarityThreshold) {
+                if ($distance === 1 || (strlen($name1) >= $minNameLengthForBroaderFuzzy && strlen($name2) >= $minNameLengthForBroaderFuzzy)) {
+                    // Create a sorted key for the pair to avoid duplicates like (A,B) and (B,A)
+                    $pairKey = implode('__VS__', sorted_array_values_for_key([$student1Data['name_caps'].'_'.$student1Data['lin'], $student2Data['name_caps'].'_'.$student2Data['lin']]));
+
+                    if (!isset($fuzzyMatchPairs[$pairKey])) {
+                         $_SESSION['fuzzy_match_warnings'][] = [
+                            'student1_name_raw' => $student1Data['name_raw'],
+                            'student1_lin' => $student1Data['lin'],
+                            'student1_occurrence' => $student1Data['first_occurrence'],
+                            'student2_name_raw' => $student2Data['name_raw'],
+                            'student2_lin' => $student2Data['lin'],
+                            'student2_occurrence' => $student2Data['first_occurrence'],
+                            'levenshtein_distance' => $distance
+                        ];
+                        $fuzzyMatchPairs[$pairKey] = true; // Mark this pair as reported
+                    }
+                }
+            }
+        }
+    }
+    if (!empty($_SESSION['fuzzy_match_warnings'])) {
+        error_log("PROCESS_EXCEL: Fuzzy match warnings generated: " . count($_SESSION['fuzzy_match_warnings']));
+    }
+
+    // Helper function to create a sorted key for pairs (used above)
+    if (!function_exists('sorted_array_values_for_key')) {
+        function sorted_array_values_for_key(array $array): array {
+            sort($array, SORT_STRING);
+            return $array;
+        }
+    }
+    // --- END Fuzzy Name Matching ---
 
     $academicYearId = findOrCreateLookup($pdo, 'academic_years', 'year_name', $yearValue);
     $termId = findOrCreateLookup($pdo, 'terms', 'term_name', $termValue);

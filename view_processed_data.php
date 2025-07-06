@@ -62,20 +62,46 @@ $subjectDisplayNames = [
 ];
 
 // --- Potential Duplicate Highlighting Logic ---
-$flaggedStudentIdsForHighlight = [];
+$flaggedStudentIdsForHighlight = []; // For DB duplicates
 if (isset($_SESSION['potential_duplicates_found']) && is_array($_SESSION['potential_duplicates_found'])) {
     foreach ($_SESSION['potential_duplicates_found'] as $dupInfo) {
         if (isset($dupInfo['processed_student_id'])) {
             $flaggedStudentIdsForHighlight[] = $dupInfo['processed_student_id'];
         }
     }
-    // Unset session variables after use to prevent stale highlighting on other pages or refreshes
     unset($_SESSION['potential_duplicates_found']);
-    if (isset($_SESSION['flagged_duplicates_this_run'])) {
-        unset($_SESSION['flagged_duplicates_this_run']);
+    if (isset($_SESSION['flagged_duplicates_this_run'])) unset($_SESSION['flagged_duplicates_this_run']);
+}
+
+// --- New Consistency Checks Data Retrieval ---
+$missingStudentsWarnings = $_SESSION['missing_students_warnings'] ?? [];
+$fuzzyMatchWarnings = $_SESSION['fuzzy_match_warnings'] ?? [];
+
+// Prepare data for easy lookup during table rendering for fuzzy matches
+$studentsInFuzzyMatches = []; // Store 'name_caps_lin' identifiers of students involved in fuzzy matches
+if (!empty($fuzzyMatchWarnings)) {
+    foreach ($fuzzyMatchWarnings as $warning) {
+        $key1 = strtoupper($warning['student1_name_raw']) . '_' . ($warning['student1_lin'] ?: 'NO_LIN');
+        $studentsInFuzzyMatches[$key1] = true;
+        $key2 = strtoupper($warning['student2_name_raw']) . '_' . ($warning['student2_lin'] ?: 'NO_LIN');
+        $studentsInFuzzyMatches[$key2] = true;
     }
 }
-// --- End Potential Duplicate Highlighting Logic ---
+
+// Prepare data for students missing from sheets
+$studentsWithMissingSheetData = []; // Store 'name_caps_lin' => list of missing sheets
+if (!empty($missingStudentsWarnings)) {
+    foreach ($missingStudentsWarnings as $warning) {
+        $key = strtoupper($warning['name_raw']) . '_' . ($warning['lin'] ?: 'NO_LIN');
+        $studentsWithMissingSheetData[$key] = $warning['missing_from_sheets'];
+    }
+}
+
+// Unset new session variables after use
+if (isset($_SESSION['missing_students_warnings'])) unset($_SESSION['missing_students_warnings']);
+if (isset($_SESSION['fuzzy_match_warnings'])) unset($_SESSION['fuzzy_match_warnings']);
+if (isset($_SESSION['processed_for_fuzzy_check'])) unset($_SESSION['processed_for_fuzzy_check']);
+// --- End New Consistency Checks Data Retrieval ---
 
 ?>
 <!DOCTYPE html>
@@ -137,9 +163,17 @@ if (isset($_SESSION['potential_duplicates_found']) && is_array($_SESSION['potent
         #studentSearchResults .list-group-item:hover {
             background-color: #f0f0f0;
         }
-        .highlight-row td { /* Apply to TD for full row highlight */
+        .highlight-row td { /* Apply to TD for full row highlight - DB Duplicates */
             background-color: #fff3cd !important; /* Light yellow highlight */
-            transition: background-color 0.3s ease-in-out;
+        }
+        .fuzzy-match-highlight td { /* Fuzzy matches highlight */
+            background-color: #e2e3e5 !important; /* Light grey/blueish highlight */
+        }
+        .missing-data-indicator {
+            color: #dc3545; /* Red color for missing data */
+            font-weight: bold;
+            margin-left: 8px;
+            cursor: help;
         }
         /* Container for search to manage positioning of results */
         .search-container {
@@ -243,11 +277,26 @@ if (isset($_SESSION['potential_duplicates_found']) && is_array($_SESSION['potent
         </div>
 
         <h3 class="mt-4 mb-3">Student Raw Scores</h3>
-        <?php if (!empty($flaggedStudentIdsForHighlight)): ?>
-            <div class="alert alert-info" role="alert">
-                <i class="fas fa-info-circle"></i> Rows highlighted in yellow (<span style="background-color: #fff3cd; padding: 0.2em 0.4em;">like this</span>) indicate students flagged as potential duplicates during the import process. Please review them.
-            </div>
-        <?php endif; ?>
+        <?php
+        $hasDbDuplicates = !empty($flaggedStudentIdsForHighlight);
+        $hasFuzzyMatches = !empty($studentsInFuzzyMatches);
+        $hasMissingSheetData = !empty($studentsWithMissingSheetData);
+
+        if ($hasDbDuplicates || $hasFuzzyMatches || $hasMissingSheetData) {
+            echo '<div class="alert alert-info" role="alert">';
+            echo '<h5 class="alert-heading"><i class="fas fa-info-circle"></i> Data Review Notes:</h5><ul>';
+            if ($hasDbDuplicates) {
+                echo '<li>Rows highlighted in <span style="background-color: #fff3cd; padding: 0.1em 0.3em;">yellow</span> indicate students potentially duplicated with existing database records.</li>';
+            }
+            if ($hasFuzzyMatches) {
+                echo '<li>Rows highlighted in <span style="background-color: #e2e3e5; padding: 0.1em 0.3em;">grey</span> indicate names that are very similar to other names in this uploaded file (potential typos).</li>';
+            }
+            if ($hasMissingSheetData) {
+                echo '<li>A <span class="missing-data-indicator" title="Indicates student might be missing from some required subject sheets. Check notifications on previous page."><strong>(!)</strong></span> icon next to a student\'s name indicates they might be missing from some required subject sheets.</li>';
+            }
+            echo '</ul><p>Please review these items carefully and use the editing tools if corrections are needed.</p></div>';
+        }
+        ?>
         <form id="editMarksForm" action="handle_edit_marks.php" method="post">
             <input type="hidden" name="batch_id" value="<?php echo $batch_id; ?>">
             <div class="mb-3 text-center" id="editModeButtons" style="display: none;">
@@ -277,17 +326,29 @@ if (isset($_SESSION['potential_duplicates_found']) && is_array($_SESSION['potent
                         </thead>
                         <tbody>
                             <?php $count = 0; foreach ($studentsWithScores as $studentId => $studentData): $count++;
-                                $rowClass = '';
+                                $currentStudentIdentifier = strtoupper($studentData['student_name']) . '_' . ($studentData['lin_no'] ?: 'NO_LIN');
+                                $rowClasses = [];
                                 if (in_array($studentId, $flaggedStudentIdsForHighlight)) {
-                                    $rowClass = 'highlight-row'; // This class is defined in the <style> block
+                                    $rowClasses[] = 'highlight-row'; // DB duplicate
                                 }
+                                if (isset($studentsInFuzzyMatches[$currentStudentIdentifier])) {
+                                    $rowClasses[] = 'fuzzy-match-highlight'; // Fuzzy match
+                                }
+                                $rowClassString = !empty($rowClasses) ? implode(' ', $rowClasses) : '';
+
+                                $missingSheetsIndicator = '';
+                                if (isset($studentsWithMissingSheetData[$currentStudentIdentifier])) {
+                                    $missingSheetsList = htmlspecialchars(implode(', ', $studentsWithMissingSheetData[$currentStudentIdentifier]));
+                                    $missingSheetsIndicator = '<span class="missing-data-indicator" title="Missing from: ' . $missingSheetsList . '"><strong>(!)</strong></span>';
+                                }
+
                             ?>
-                                <tr data-student-id="<?php echo $studentId; ?>" class="<?php echo $rowClass; ?>">
+                                <tr data-student-id="<?php echo $studentId; ?>" class="<?php echo $rowClassString; ?>">
                                     <td><?php echo $count; ?>
                                         <input type="hidden" name="students[<?php echo $studentId; ?>][id]" value="<?php echo $studentId; ?>">
                                     </td>
                                     <td class="student-name-col">
-                                        <span class="score-display"><?php echo htmlspecialchars($studentData['student_name']); ?></span>
+                                        <span class="score-display"><?php echo htmlspecialchars($studentData['student_name']) . $missingSheetsIndicator; ?></span>
                                         <input type="text" name="students[<?php echo $studentId; ?>][name]" class="form-control form-control-sm score-input" value="<?php echo htmlspecialchars($studentData['student_name']); ?>" style="display: none;">
                                     </td>
                                     <td>

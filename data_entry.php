@@ -131,6 +131,65 @@ if(isset($_SESSION['report_data']) && !isset($_SESSION['last_processed_batch_id'
             // will be unset by view_processed_data.php after it uses them for highlighting,
             // or by process_excel.php on a new upload.
         }
+
+        // Display "Missing Students Across Sheets" Warnings
+        if (isset($_SESSION['missing_students_warnings']) && !empty($_SESSION['missing_students_warnings'])) {
+            echo '<div class="alert alert-info mt-3" role="alert">'; // Using alert-info for these consistency checks
+            echo '<h4 class="alert-heading"><i class="fas fa-list-ul"></i> Data Consistency: Missing Student Entries in Sheets</h4>';
+            echo '<p>The following students were found in some subject sheets but appear to be missing from other <strong>required</strong> subject sheets within the uploaded Excel file. This can affect overall calculations and positioning. Please verify and correct the Excel file or edit the data after import.</p>';
+            echo '<hr>';
+            echo '<ul>';
+            foreach ($_SESSION['missing_students_warnings'] as $warning) {
+                echo '<li>';
+                echo '<strong>Student:</strong> ' . htmlspecialchars($warning['name_raw']);
+                if ($warning['lin']) {
+                    echo ' (LIN: ' . htmlspecialchars($warning['lin']) . ')';
+                }
+                echo ' - First seen in sheet \''. htmlspecialchars($warning['first_occurrence']['sheet']) . '\' at row ' . htmlspecialchars($warning['first_occurrence']['row']) .'.';
+                echo '<br><em>Missing from required sheet(s):</em> ' . htmlspecialchars(implode(', ', $warning['missing_from_sheets']));
+                echo '</li>';
+            }
+            echo '</ul>';
+            if ($last_processed_batch_id) {
+                 echo '<p>You may need to <a href="view_processed_data.php?batch_id=' . htmlspecialchars($last_processed_batch_id) . '" class="alert-link">view the processed data for batch ' . htmlspecialchars($last_processed_batch_id) . '</a> and use the editing tools to add missing scores if appropriate, or re-upload a corrected Excel file.</p>';
+            }
+            echo '</div>';
+            // Session variable will be unset by view_processed_data.php or on next upload.
+        }
+
+        // Display "Fuzzy Name Match" Warnings
+        if (isset($_SESSION['fuzzy_match_warnings']) && !empty($_SESSION['fuzzy_match_warnings'])) {
+            echo '<div class="alert alert-secondary mt-3" role="alert">'; // Using alert-secondary for potential typos
+            echo '<h4 class="alert-heading"><i class="fas fa-spell-check"></i> Potential Name Typos Detected in Uploaded File</h4>';
+            echo '<p>The system detected names within the uploaded Excel file that are very similar to each other. These might be typos. Please review them carefully.</p>';
+            echo '<hr>';
+            echo '<ul>';
+            foreach ($_SESSION['fuzzy_match_warnings'] as $warning) {
+                echo '<li>';
+                echo '<strong>Potential Typo Pair (Distance: '.htmlspecialchars($warning['levenshtein_distance']).'):</strong>';
+                echo '<ul>';
+                echo '<li>Name 1: <strong>' . htmlspecialchars($warning['student1_name_raw']) . '</strong>';
+                if ($warning['student1_lin']) {
+                    echo ' (LIN: ' . htmlspecialchars($warning['student1_lin']) . ')';
+                }
+                echo ' - Found in sheet \''. htmlspecialchars($warning['student1_occurrence']['sheet']) . '\' at row ' . htmlspecialchars($warning['student1_occurrence']['row']) .'.';
+                echo '</li>';
+                echo '<li>Name 2: <strong>' . htmlspecialchars($warning['student2_name_raw']) . '</strong>';
+                if ($warning['student2_lin']) {
+                    echo ' (LIN: ' . htmlspecialchars($warning['student2_lin']) . ')';
+                }
+                echo ' - Found in sheet \''. htmlspecialchars($warning['student2_occurrence']['sheet']) . '\' at row ' . htmlspecialchars($warning['student2_occurrence']['row']) .'.';
+                echo '</li>';
+                echo '</ul>';
+                echo '</li>';
+            }
+            echo '</ul>';
+            if ($last_processed_batch_id) {
+                 echo '<p>When you <a href="view_processed_data.php?batch_id=' . htmlspecialchars($last_processed_batch_id) . '" class="alert-link">view the processed data for batch ' . htmlspecialchars($last_processed_batch_id) . '</a>, you can use the editing tools to correct any typos.</p>';
+            }
+            echo '</div>';
+            // Session variable will be unset by view_processed_data.php or on next upload.
+        }
         ?>
         <div class="text-center mb-4">
             <!-- Logo removed from here as it's in navbar -->
