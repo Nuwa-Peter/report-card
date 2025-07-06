@@ -1,5 +1,6 @@
 <?php
 session_start();
+error_log("PROCESS_EXCEL_SCRIPT_STARTED: Script execution begun at " . date('Y-m-d H:i:s')); // Log script start
 date_default_timezone_set('Africa/Kampala');
 
 // Ensure vendor/autoload.php exists
@@ -118,11 +119,21 @@ try {
     $termId = findOrCreateLookup($pdo, 'terms', 'term_name', $termValue);
     $classId = findOrCreateLookup($pdo, 'classes', 'class_name', $selectedClassValue);
 
+    // **** NEW LOGGING FOR BATCH IDENTIFICATION ****
+    error_log("PROCESS_EXCEL_BATCH_CHECK: Input Values - YearValue: '$yearValue', TermValue: '$termValue', ClassSelection: '$selectedClassValue'");
+    error_log("PROCESS_EXCEL_BATCH_CHECK: Resolved IDs - AcademicYearID: $academicYearId, TermID: $termId, ClassID: $classId");
+    // *********************************************
+
     $stmtBatch = $pdo->prepare("SELECT id FROM report_batch_settings WHERE academic_year_id = :year_id AND term_id = :term_id AND class_id = :class_id");
     $stmtBatch->execute([':year_id' => $academicYearId, ':term_id' => $termId, ':class_id' => $classId]);
     $reportBatchId = $stmtBatch->fetchColumn();
 
+    // **** NEW LOGGING FOR BATCH RESULT ****
+    error_log("PROCESS_EXCEL_BATCH_RESULT: Found reportBatchId: " . ($reportBatchId ?: 'NONE_FOUND'));
+    // **************************************
+
     if ($reportBatchId) {
+        error_log("PROCESS_EXCEL_BATCH_ACTION: Existing batch found (ID: $reportBatchId). Deleting old scores/summaries."); // Log action for existing batch
         $stmtUpdateBatch = $pdo->prepare("UPDATE report_batch_settings SET term_end_date = :term_end, next_term_begin_date = :next_term_begin, import_date = CURRENT_TIMESTAMP WHERE id = :id");
         $stmtUpdateBatch->execute([':term_end' => $termEndDate, ':next_term_begin' => $nextTermBeginDate, ':id' => $reportBatchId]);
         $stmtDeleteOldScores = $pdo->prepare("DELETE FROM scores WHERE report_batch_id = :batch_id");
@@ -181,9 +192,16 @@ try {
 
 
         $subjectId = findOrCreateLookup($pdo, 'subjects', 'subject_code', $subjectInternalKey, ['subject_name_full' => $subjectNameForLookup]);
+
+        // **** NEW: Log Subject ID Lookup ****
+        error_log("PROCESS_EXCEL_SUBJECT_LOOKUP: Sheet: '$sheetName', SubjectInternalKey: '$subjectInternalKey', SubjectNameForLookup: '$subjectNameForLookup', Found/Created SubjectID: " . ($subjectId ?: 'INVALID_OR_FALSE'));
         if (!$subjectId) {
+            // Log a more specific error if subjectId is not valid, as this will cause issues.
+            error_log("PROCESS_EXCEL_SUBJECT_ERROR: CRITICAL - Failed to obtain a valid subject ID for sheet: '$sheetName' (Internal Key: '$subjectInternalKey'). Score insertions for this sheet will likely fail or use an invalid subject_id. Please check subjects table and subject name mapping.");
+            // Original exception:
             throw new Exception("Failed to find or create subject ID for: " . htmlspecialchars($subjectDisplayNameForError) . " (using internal code: " . htmlspecialchars($subjectInternalKey) . ")");
         }
+        // ***********************************
 
         // Headers are LIN, Names/Name, BOT, MOT, EOT in row 1
         $headerLIN = trim(strtoupper(strval($currentSheetObject->getCell('A1')->getValue())));
@@ -293,6 +311,11 @@ try {
                          throw new Exception("Data conflict in sheet '" . htmlspecialchars($sheetName) . "', row " . $row . " for new student '" . htmlspecialchars($studentNameRaw) . "': The LIN '" . htmlspecialchars($linToStore) . "' is already assigned to another student in the database. Cannot create new student with this LIN.");
                     }
                 }
+
+                // **** NEW: Log before inserting new student ****
+                error_log("PROCESS_EXCEL: Creating NEW student. Sheet: '" . $sheetName . "', Row: " . $row . ", LIN: '" . ($linToStore ?? 'N/A') . "', Name (Raw): '" . $studentNameRaw . "', Name (Processed): '" . $studentNameAllCaps . "'");
+                // **********************************************
+
                 $stmtInsertStudent = $pdo->prepare("INSERT INTO students (student_name, current_class_id, lin_no) VALUES (:name, :class_id, :lin_no)");
                 $stmtInsertStudent->execute([':name' => $studentNameAllCaps, ':class_id' => $classId, ':lin_no' => $linToStore]);
                 $studentId = $pdo->lastInsertId();
