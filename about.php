@@ -205,6 +205,7 @@ date_default_timezone_set('Africa/Kampala');
                 <li>Generation of individual and class-wide PDF report cards.</li>
                 <li>Class performance summary sheets with visual charts.</li>
                 <li>Student Analytics: Historical Performance Tracking and Comparative Analysis.</li>
+                <li><strong>Secure Sessions:</strong> User sessions automatically time out after 30 minutes of inactivity to enhance security.</li>
             </ul>
         </section>
 
@@ -223,6 +224,13 @@ date_default_timezone_set('Africa/Kampala');
         <section id="help-guide">
             <h3 class="section-title">System Usage Guide (v8.0 Workflow)</h3>
             <p><strong>Dashboard:</strong> The main entry point. Use the sidebar to navigate to different sections of the system.</p>
+
+            <h5><i class="fas fa-sign-in-alt me-2"></i>Getting Started / Accessing the System</h5>
+            <ol>
+                <li><strong>Logging In:</strong> Access the system using the provided URL (e.g., <code>your_school_domain.com/report_system/login.php</code>). Enter your assigned username (this might be your email address or a specific system username) and password.</li>
+                <li><strong>Session Timeout:</strong> For your security, user sessions will automatically end after 30 minutes of inactivity. If your session times out, you will be redirected to the login page and will need to sign in again to continue. Any unsaved work may be lost, so save frequently if applicable.</li>
+                <li><strong>Logging Out:</strong> To securely end your session, always use the "Logout" button, typically found in the top navigation bar or user dropdown menu. This will clear your session data and return you to the login page.</li>
+            </ol>
 
             <h5><i class="fas fa-file-download me-2"></i>Step 1: Download Marks Entry Template</h5>
             <ol>
@@ -269,12 +277,38 @@ date_default_timezone_set('Africa/Kampala');
                     </ul>
                 </li>
                 <li>Click the "Process & Save Data" button at the bottom.</li>
+                <li><strong>Review Initial Feedback:</strong> After processing, the system may display messages directly on the Data Entry page. These can include:
+                    <ul>
+                        <li><strong>Potential Duplicates Found:</strong> Alerts if students in your upload might already exist in the database with a different ID or conflicting LIN.</li>
+                        <li><strong>Data Consistency Warnings:</strong> Highlights if students appear in some subject sheets but are missing from others within your Excel file.</li>
+                        <li><strong>Potential Name Typos:</strong> Flags names within your uploaded file that are very similar to each other, suggesting possible typos.</li>
+                    </ul>
+                    Review these messages. More detailed highlighting of these issues will be available on the "View Details for Processed Batch" page.
+                </li>
                 <li>The system will validate the file and data. If successful, you will see a success message and a link to "View Details for Processed Batch ID: X". Click this link. If there are errors, they will be displayed on the Data Entry page; correct them in your Excel file and re-upload.</li>
             </ol>
 
-            <h5><i class="fas fa-calculator me-2"></i>Step 4: Run Calculations & Generate Remarks</h5>
+            <h5><i class="fas fa-tasks me-2"></i>Step 4: View Processed Data, Review Warnings & Run Calculations</h5>
              <ol>
                 <li>After successful upload and clicking the "View Details for Processed Batch ID: X" link (or navigating via "View Report Archives" -> "Process/View Data" for an existing batch), you will be on the specific batch processing page.</li>
+                <li><strong>Review Imported Data:</strong> Carefully check the displayed scores for accuracy.</li>
+                <li><strong>Understand Highlighted Warnings:</strong>
+                    <ul>
+                        <li>Rows highlighted in <span style="background-color: #fff3cd; padding: 0.1em 0.3em;">yellow</span> (or similar warning color) typically indicate students from your upload who might be duplicates of existing database records. Check their names and LIN numbers against the database matches shown in the initial warning.</li>
+                        <li>Rows highlighted in <span style="background-color: #f8d7da; padding: 0.1em 0.3em;">red</span> (or similar alert color) usually flag names within the uploaded file that are very similar to each other, suggesting potential typos.</li>
+                        <li>A <span class="missing-data-indicator" title="Indicates student might be missing from some required subject sheets."><strong>(!)</strong></span> icon next to a student's name indicates they might be missing from some required subject sheets in the uploaded Excel file.</li>
+                    </ul>
+                </li>
+                <li><strong>Editing Data (If Necessary):</strong> If you find errors or need to resolve warnings:
+                    <ul>
+                        <li>Click the "Enable Table Editing" button. This will make the score table editable.</li>
+                        <li>You can correct student names, LINs, and individual scores directly in the table.</li>
+                        <li>You can also add new students to the batch using the "Add New Student" button that appears in edit mode.</li>
+                        <li>To delete a student *from the current batch only* (their scores and summary for this batch), click the trash icon next to their row in edit mode.</li>
+                        <li>Once changes are made, click "Save Changes". To discard edits, click "Cancel Edits".</li>
+                        <li><strong>Important:</strong> After saving any edits, you *must* re-run calculations. A warning message will remind you if data has changed since the last calculation.</li>
+                    </ul>
+                </li>
                 <li>On this page, review the imported scores if needed.</li>
                 <li><strong>Crucially, click the "<i class="fas fa-calculator"></i> Run Calculations & Auto-Remarks" button.</strong> This performs all necessary calculations (averages, positions, aggregates, divisions) and generates automated teacher/headteacher remarks for each student. This step must be completed before generating final reports or summaries.</li>
                 <li>You should see a success message once calculations are done.</li>
@@ -325,6 +359,39 @@ date_default_timezone_set('Africa/Kampala');
             <p><em>This analytical tool helps pinpoint specific academic patterns.</em></p>
         </section>
 
+        <section id="admin-features">
+            <h3 class="section-title">Administrative Features</h3>
+            <p class="text-muted text-center"><em>The following features are typically available to users with Superadmin privileges.</em></p>
+
+            <h5><i class="fas fa-users-cog me-2"></i>User Management (Superadmin Only)</h5>
+            <p>Superadmins can manage certain user aspects. Currently, this includes resetting the primary 'admin' user's password.</p>
+            <ol>
+                <li>Navigate to "Manage Users" from the sidebar (visible to Superadmins).</li>
+                <li>On the User Management page, you will find an option to "Reset Admin User Password".</li>
+                <li>Enter the new password and confirm it.</li>
+                <li>Click "Reset Admin Password". This will update the password for the admin account associated with the email <code>houseofnazareth.schools@gmail.com</code>.</li>
+            </ol>
+
+            <h5><i class="fas fa-history me-2"></i>System Activity Log (Superadmin Only)</h5>
+            <p>Superadmins can monitor recent system activities for auditing and troubleshooting purposes.</p>
+            <ul>
+                <li><strong>Recent Activity Feed:</strong> On the main dashboard, a bell icon <i class="fas fa-bell"></i> in the top navigation bar indicates recent activities. Clicking it opens a dropdown with the latest logs. New, unread activities will show a badge count.</li>
+                <li><strong>Mark as Read:</strong> Within the activity feed dropdown, you can "Mark All as Read" to clear the new activity notification.</li>
+                <li><strong>View All Logs:</strong> From the activity feed dropdown, click "View All Logs" (or navigate directly via a link if available) to access the <code>view_activity_log.php</code> page. This page provides a paginated view of all recorded system activities.</li>
+                <li><strong>Log Retention:</strong> Note that activity logs may be periodically cleared or archived by the system administrator.</li>
+            </ul>
+
+            <h5><i class="fas fa-trash-alt me-2"></i>Managing Report Batches</h5>
+            <p>Users with appropriate permissions (typically Admins/Superadmins) can delete entire processed batches.</p>
+            <ol>
+                <li>Navigate to "View Report Archives" from the sidebar.</li>
+                <li>Locate the batch you wish to delete from the list. You can use filters to find specific batches.</li>
+                <li>In the "Actions" column for that batch, click the "<i class="fas fa-trash-alt"></i> Delete" button.</li>
+                <li>A confirmation prompt will appear. <strong>Be very careful:</strong> Deleting a batch permanently removes all its associated data, including student scores and summaries for that specific term and class. This action cannot be undone.</li>
+                <li>Confirm to proceed with the deletion.</li>
+            </ol>
+        </section>
+
         <section id="troubleshooting">
             <h3 class="section-title">Troubleshooting / Common Issues</h3>
             <ul>
@@ -344,6 +411,19 @@ date_default_timezone_set('Africa/Kampala');
                 <li><strong>PDF Not Generating / Error in PDF:</strong>
                     <ul>
                         <li>Confirm calculations were run. Note any error message and contact support if issues persist.</li>
+                    </ul>
+                </li>
+                <li><strong>Login Issues:</strong>
+                    <ul>
+                        <li>If you have trouble logging in, double-check that your username (email or system username) and password are correct. Passwords are case-sensitive.</li>
+                        <li>If you see a "Session Expired" message, your session timed out due to inactivity (usually 30 minutes). Simply log in again.</li>
+                        <li>For persistent "Invalid username or password" errors, verify your credentials. If you're certain they are correct, contact school administration or system support.</li>
+                        <li>If you encounter an "An error occurred during login" message, please note the time and report it to system support, as this may indicate a technical issue.</li>
+                    </ul>
+                </li>
+                <li><strong>Data Discrepancies:</strong> If calculated totals, averages, or positions seem incorrect, or if reports are missing the latest data:
+                    <ul>
+                        <li>Ensure you have clicked the "<strong><i class="fas fa-calculator"></i> Run Calculations & Auto-Remarks</strong>" button for the specific batch <em>after</em> any data import or edits. A warning message ("Data has changed. Please re-run calculations...") will appear on the 'View Processed Data' page if this step is needed.</li>
                     </ul>
                 </li>
             </ul>
