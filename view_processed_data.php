@@ -289,7 +289,7 @@ if (isset($_SESSION['processed_for_fuzzy_check'])) unset($_SESSION['processed_fo
                 echo '<li>Rows highlighted in <span style="background-color: #fff3cd; padding: 0.1em 0.3em;">yellow</span> indicate students potentially duplicated with existing database records.</li>';
             }
             if ($hasFuzzyMatches) {
-                echo '<li>Rows highlighted in <span style="background-color: #e2e3e5; padding: 0.1em 0.3em;">grey</span> indicate names that are very similar to other names in this uploaded file (potential typos).</li>';
+                echo '<li>Rows highlighted in <span style="background-color: #f8d7da; padding: 0.1em 0.3em;">red</span> indicate names that are very similar to other names in this uploaded file (potential typos).</li>';
             }
             if ($hasMissingSheetData) {
                 echo '<li>A <span class="missing-data-indicator" title="Indicates student might be missing from some required subject sheets. Check notifications on previous page."><strong>(!)</strong></span> icon next to a student\'s name indicates they might be missing from some required subject sheets.</li>';
