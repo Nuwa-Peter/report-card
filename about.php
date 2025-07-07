@@ -192,11 +192,11 @@ date_default_timezone_set('Africa/Kampala');
         </div>
 
         <section id="about-system">
-            <h3 class="section-title">About the Report Card System (v8.0)</h3>
+            <h3 class="section-title">About the Report Card System (v16)</h3>
             <p>This system is designed to streamline the generation and management of student academic reports for Maria Ow'embabazi Primary School. It allows for the importation of student scores from Excel files, calculation of termly performance metrics, and generation of printable PDF report cards and summary sheets.</p>
             <p>Key features include:</p>
             <ul>
-                <li><strong>Unified Excel Templates (New in v8.0):</strong> Streamlined data import using a single Excel workbook per class level (Lower Primary P1-P3, Upper Primary P4-P7). Each subject's data is entered into a separate, pre-named sheet within the workbook.</li>
+                <li><strong>Unified Excel Templates (New in v16):</strong> Streamlined data import using a single Excel workbook per class level (Lower Primary P1-P3, Upper Primary P4-P7). Each subject's data is entered into a separate, pre-named sheet within the workbook.</li>
                 <li>Batch processing of student marks.</li>
                 <li>Automatic calculation of aggregates, divisions (for P4-P7), averages, and class positions (for P1-P3).</li>
                 <li>Automated generation of teacher and headteacher remarks based on performance.</li>
@@ -222,7 +222,7 @@ date_default_timezone_set('Africa/Kampala');
         </section>
 
         <section id="help-guide">
-            <h3 class="section-title">System Usage Guide (v8.0 Workflow)</h3>
+            <h3 class="section-title">System Usage Guide (v16 Workflow)</h3>
             <p><strong>Dashboard:</strong> The main entry point. Use the sidebar to navigate to different sections of the system.</p>
 
             <h5><i class="fas fa-sign-in-alt me-2"></i>Getting Started / Accessing the System</h5>
