@@ -12,8 +12,8 @@ if (isset($_SESSION['user_id'])) {
     exit;
 }
 
-$username = $_POST['username'] ?? '';
-$password = $_POST['password'] ?? '';
+$username = trim($_POST['username'] ?? ''); // Trimmed
+$password = trim($_POST['password'] ?? ''); // Trimmed
 
 if (empty($username) || empty($password)) {
     $_SESSION['login_error_message'] = 'Username and password are required.';
@@ -22,30 +22,29 @@ if (empty($username) || empty($password)) {
 }
 
 try {
-    // Attempt to fetch user by username or email first
-    $stmt = $pdo->prepare("SELECT id, username, password_hash, role, email, phone_number FROM users WHERE username = :login_identifier OR email = :login_identifier LIMIT 1");
-    $stmt->execute([':login_identifier' => $username]);
+    error_log("DEBUG: Attempting user lookup for username/email: " . $username);
+    // Changed to positional placeholders
+    $sql = "SELECT id, username, password_hash, role, email, phone_number FROM users WHERE username = ? OR email = ? LIMIT 1";
+    $stmt = $pdo->prepare($sql);
+    // Execute with an array of values for positional placeholders
+    $stmt->execute([$username, $username]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    error_log("DEBUG: User lookup completed. User found: " . ($user ? "Yes (" . $user['username'] . ")" : "No"));
 
-    // If not found by username/email, and if the input might be a phone number, try by phone number
-    // Basic check: is it numeric and within a reasonable length for a phone number?
-    // This is a loose check; more sophisticated phone number validation could be added.
-    if (!$user && is_numeric($username) && strlen($username) >= 7 && strlen($username) <= 15) {
-        $stmt = $pdo->prepare("SELECT id, username, password_hash, role, email, phone_number FROM users WHERE phone_number = :phone LIMIT 1");
-        $stmt->execute([':phone' => $username]);
-        $user = $stmt->fetch(PDO::FETCH_ASSOC);
-    }
+    // Phone number lookup has been removed.
 
     if ($user && password_verify($password, $user['password_hash'])) {
-        // Password is correct, start session
+        error_log("DEBUG: Password verified for user: " . $user['username'] . ". Attempting to regenerate session ID.");
         session_regenerate_id(true); // Regenerate session ID for security
+        error_log("DEBUG: Session ID regenerated.");
 
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['username'] = $user['username'];
         $_SESSION['role'] = $user['role']; // Store role if you have role-based access control
         $_SESSION['last_activity'] = time(); // Set last activity time
+        error_log("DEBUG: Session variables set for user: " . $user['username']);
 
-        // Log activity
+        error_log("DEBUG: Attempting to log activity for user: " . $user['username']);
         require_once 'dal.php'; // Ensure DAL is available
         logActivity(
             $pdo,
@@ -54,22 +53,29 @@ try {
             'USER_LOGIN',
             "User '" . $user['username'] . "' logged in successfully."
         );
+        error_log("DEBUG: Activity logged for user: " . $user['username']);
 
-        // Redirect to dashboard or intended page
+        error_log("DEBUG: Redirecting to index.php for user: " . $user['username']);
         header('Location: index.php');
         exit;
     } else {
-        // Invalid credentials
+        error_log("DEBUG: Invalid credentials for username: " . $username . ". User found in DB: " . ($user ? "Yes" : "No") . ", Password verify result: " . ($user ? (password_verify($password, $user['password_hash']) ? 'Pass' : 'Fail') : "N/A"));
         $_SESSION['login_error_message'] = 'Invalid username or password.';
         header('Location: login.php');
         exit;
     }
 
 } catch (PDOException $e) {
-    // Log error and set a generic error message for the user
-    error_log("Login Error: " . $e->getMessage());
+    error_log("Login Error: " . $e->getMessage() . " | Trace: " . $e->getTraceAsString());
     $_SESSION['login_error_message'] = 'An error occurred during login. Please try again later.';
-    header('Location: login.php');
+    // Ensure no further output before header redirect
+    if (!headers_sent()) {
+        header('Location: login.php');
+    } else {
+        // Fallback if headers already sent, though error_log is the primary debug path
+        echo "A critical database error occurred. Please check server logs. Redirecting...";
+        echo "<script>window.location.href='login.php';</script>"; // JS redirect as a last resort
+    }
     exit;
 }
 ?>
