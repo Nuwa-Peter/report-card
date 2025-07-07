@@ -1,12 +1,22 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+require_once 'session_utils.php'; // Provides session utility functions
 
 header('Content-Type: application/json');
 
-// Access Check: Ensure user is logged in and is a superadmin
-if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || $_SESSION['role'] !== 'superadmin') {
+$session_status = handle_session_activity_and_timeout(); // Default 30 min timeout
+
+if ($session_status === 'no_user_id') {
+    http_response_code(401); // Unauthorized
+    echo json_encode(['success' => false, 'error' => 'Authentication required. Please log in.']);
+    exit;
+} elseif ($session_status === 'timed_out') {
+    http_response_code(401); // Unauthorized - session timed out
+    echo json_encode(['success' => false, 'error' => 'Session timed out. Please log in again.']);
+    exit;
+}
+
+// Session is active, now check role
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'superadmin') {
     http_response_code(403); // Forbidden
     echo json_encode(['success' => false, 'error' => 'Access denied. Superadmin privileges required.']);
     exit;

@@ -43,6 +43,7 @@ try {
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['username'] = $user['username'];
         $_SESSION['role'] = $user['role']; // Store role if you have role-based access control
+        $_SESSION['last_activity'] = time(); // Set last activity time
 
         // Log activity
         require_once 'dal.php'; // Ensure DAL is available

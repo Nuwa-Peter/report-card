@@ -1,15 +1,5 @@
 <?php
-// Start session if not already started
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
-// Check if user is logged in
-if (!isset($_SESSION['user_id'])) {
-    header('Location: login.php');
-    exit;
-}
-
+require_once 'session_check.php'; // Handles session start and authentication
 require_once 'db_connection.php';
 require_once 'dal.php';
 require_once 'calculation_utils.php'; // For potential grade calculations if needed

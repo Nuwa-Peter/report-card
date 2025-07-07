@@ -1,16 +1,5 @@
 <?php
-// Start session if not already started
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
-// Check if user is logged in
-if (!isset($_SESSION['user_id'])) {
-    // Optional: Set a flash message to explain why they are on the login page
-    // $_SESSION['login_error_message'] = "You must be logged in to access this page.";
-    header('Location: login.php');
-    exit;
-}
+require_once 'session_check.php'; // Handles session start and authentication
 require_once 'db_connection.php';
 require_once 'dal.php';
 // calculation_utils.php is not directly used here, as calculations are assumed done by run_calculations.php

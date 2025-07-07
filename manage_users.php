@@ -1,20 +1,22 @@
 <?php
-// Start session if not already started
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
-// Check if user is logged in
-if (!isset($_SESSION['user_id'])) {
-    header('Location: login.php');
-    exit;
-}
+require_once 'session_check.php'; // Handles session start and authentication
 
 // Role check: Ensure only 'superadmin' can access this page
+// session_check.php already handles the user_id check.
+// We still need the role check specific to this page.
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'superadmin') {
+    // It's possible session_check.php already redirected if no user_id.
+    // If user_id is set, but role is wrong, then this applies.
     $_SESSION['error_message'] = "You do not have permission to access this page.";
-    header('Location: index.php'); // Redirect to dashboard or an error page
-    exit;
+    // Check if headers already sent, in case session_check.php outputted something (it shouldn't on success)
+    if (!headers_sent()) {
+        header('Location: index.php'); // Redirect to dashboard
+        exit;
+    } else {
+        // Fallback if headers sent, though ideally this state shouldn't be reached
+        echo "<p>Error: Insufficient permissions. <a href='index.php'>Go to Dashboard</a></p>";
+        exit;
+    }
 }
 
 require_once 'db_connection.php'; // For database interaction

@@ -1,16 +1,5 @@
 <?php
-// Start session if not already started
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
-// Check if user is logged in
-if (!isset($_SESSION['user_id'])) {
-    // Optional: Set a flash message to explain why they are on the login page
-    // $_SESSION['login_error_message'] = "You must be logged in to access this page.";
-    header('Location: login.php');
-    exit;
-}
+require_once 'session_check.php'; // Handles session start and authentication
 
 // No specific data processing needed on the dashboard itself for this initial version,
 // but session_start() is good practice if we add user-specific elements later.
