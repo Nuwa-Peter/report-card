@@ -181,9 +181,9 @@ if (!function_exists('generateClassTeacherRemarkUtil')) {
             } elseif ($aggregate >= 7 && $aggregate <= 9) {
                 return "Very good work! You have performed impressively well.";
             } elseif ($aggregate >= 10 && $aggregate <= 12) {
-                return "Good work this term. You have achieved a Division One pass.";
+                return "Good work this term. A commendable achievement.";
             } elseif ($aggregate >= 13 && $aggregate <= 16) {
-                return "A good effort, resulting in a Division Two pass. Keep pushing yourself.";
+                return "A good effort this term. Keep pushing yourself to achieve even more.";
             } elseif ($aggregate >= 17 && $aggregate <= 24) {
                 return "You are making progress. Continue to work hard and you will improve further.";
             } elseif ($aggregate >= 25 && $aggregate <= 29) {
@@ -221,9 +221,9 @@ if (!function_exists('generateHeadTeacherRemarkUtil')) {
             } elseif ($aggregate >= 7 && $aggregate <= 9) {
                 return "This is a very strong result. Congratulations on your achievement.";
             } elseif ($aggregate >= 10 && $aggregate <= 12) {
-                return "Well done on achieving Division One. Keep working hard.";
+                return "Well done on this excellent result. Keep working hard.";
             } elseif ($aggregate >= 13 && $aggregate <= 16) {
-                return "This is a commendable performance in Division Two. Continue to aim higher.";
+                return "A commendable performance. Continue to aim higher and build on this success.";
             } elseif ($aggregate >= 17 && $aggregate <= 24) {
                 return "There is potential here. With consistent effort, you can achieve more.";
             } elseif ($aggregate >= 25 && $aggregate <= 29) {
