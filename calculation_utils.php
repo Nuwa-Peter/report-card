@@ -148,6 +148,23 @@ if (!function_exists('calculateP4P7OverallPerformanceUtil')) {
         else if ($aggregatePoints >= 13 && $aggregatePoints <= 23) $division = 'II'; // MODIFIED
         else if ($aggregatePoints >= 4 && $aggregatePoints <= 12) $division = 'I'; // MODIFIED
 
+        // New rule: Adjust division if English or Maths has grade F9
+        $eng_grade = $studentCoreSubjectsDataWithScores['english']['eot_grade'] ?? null;
+        $mtc_grade = $studentCoreSubjectsDataWithScores['mtc']['eot_grade'] ?? null;
+
+        if (($eng_grade === 'F9' || $mtc_grade === 'F9') && $division !== 'X' && $division !== 'Ungraded') {
+            if ($division === 'I') {
+                $division = 'II';
+            } elseif ($division === 'II') {
+                $division = 'III';
+            } elseif ($division === 'III') {
+                $division = 'IV';
+            } elseif ($division === 'IV') {
+                $division = 'U';
+            }
+            // If division is already U, it remains U.
+        }
+
         return ['p4p7_aggregate_points' => $aggregatePoints, 'p4p7_division' => $division];
     }
 }
@@ -156,16 +173,31 @@ if (!function_exists('calculateP4P7OverallPerformanceUtil')) {
 if (!function_exists('generateClassTeacherRemarkUtil')) {
     function generateClassTeacherRemarkUtil($performanceData, $isP4_P7) {
         if ($isP4_P7) {
-            $division = $performanceData['p4p7_division'] ?? 'Ungraded';
-            $aggregate = $performanceData['p4p7_aggregate_points'] ?? 0;
-            switch ($division) {
-                case 'I': return ($aggregate <= 6) ? "Wonderful work! You are a star. Keep up this great effort." : "Excellent job! You worked hard and did very well. Keep it up!";
-                case 'II': return ($aggregate >= 13 && $aggregate <= 15) ? "Very good effort! You're close to the top. Keep trying your best!" : "Good job! Keep working hard to do even better next time.";
-                case 'III': return "Fair effort. Try to focus more in class to improve.";
-                case 'IV': return "You need to try harder. Ask for help if you need it.";
-                case 'U': return "Please work much harder and ask your teachers for help.";
-                case 'X': return "You missed some exams. It's important to do them to see how you are doing.";
-                default: return "Try to focus on all subjects to get better results.";
+            // Remarks for P4-P7 are based on aggregate points
+            $aggregate = $performanceData['p4p7_aggregate_points'] ?? 99; // Default to a high aggregate if not set
+
+            if ($aggregate >= 4 && $aggregate <= 6) {
+                return "Excellent work this term! Keep up this outstanding effort.";
+            } elseif ($aggregate >= 7 && $aggregate <= 9) {
+                return "Very good work! You have performed impressively well.";
+            } elseif ($aggregate >= 10 && $aggregate <= 12) {
+                return "Good work this term. You have achieved a Division One pass.";
+            } elseif ($aggregate >= 13 && $aggregate <= 16) {
+                return "A good effort, resulting in a Division Two pass. Keep pushing yourself.";
+            } elseif ($aggregate >= 17 && $aggregate <= 24) {
+                return "You are making progress. Continue to work hard and you will improve further.";
+            } elseif ($aggregate >= 25 && $aggregate <= 29) {
+                return "There is room for improvement. Focus on your studies and seek help when needed.";
+            } elseif ($aggregate >= 30 && $aggregate <= 34) {
+                return "You need to put in more effort in your studies. Consistent hard work is key.";
+            } elseif ($aggregate >= 35) { // Covers 35-36 and above (Division U or higher aggregates)
+                return "Please work harder next term to improve your performance.";
+            } else { // Should not be reached if aggregate is always >= 4 for graded students, but as a fallback.
+                $division = $performanceData['p4p7_division'] ?? 'X'; // Use division for X case
+                if ($division === 'X') {
+                    return "You missed some exams. It's important to do them to see how you are doing.";
+                }
+                return "Please see your class teacher to discuss your performance."; // Generic fallback
             }
         } else { // P1-P3
             $average = $performanceData['p1p3_average_eot_score'] ?? 0;
@@ -181,16 +213,31 @@ if (!function_exists('generateClassTeacherRemarkUtil')) {
 if (!function_exists('generateHeadTeacherRemarkUtil')) {
     function generateHeadTeacherRemarkUtil($performanceData, $isP4_P7) {
         if ($isP4_P7) {
-            $division = $performanceData['p4p7_division'] ?? 'Ungraded';
-            $aggregate = $performanceData['p4p7_aggregate_points'] ?? 0;
-            switch ($division) {
-                case 'I': return ($aggregate <= 6) ? "Amazing work! The school is proud of you. Keep being a good example!" : "Well done on getting First Grade! Your hard work is great to see.";
-                case 'II': return ($aggregate >= 13 && $aggregate <= 15) ? "Great result! You can reach First Grade. Keep aiming high!" : "Good job on this Second Grade. Listen to your teachers to do even better.";
-                case 'III': return "A fair result. The school wants you to work harder for a better grade next time.";
-                case 'IV': return "You need to work harder. The school wants you to do well.";
-                case 'U': return "This needs to be much better. Ask for help from teachers and parents.";
-                case 'X': return "Exams are important. The school expects you to try your best in all school work.";
-                default: return "Please work hard in all subjects. The school is here to help you.";
+            // Remarks for P4-P7 are based on aggregate points
+            $aggregate = $performanceData['p4p7_aggregate_points'] ?? 99; // Default to a high aggregate if not set
+
+            if ($aggregate >= 4 && $aggregate <= 6) {
+                return "A truly exceptional performance. We are very proud of you.";
+            } elseif ($aggregate >= 7 && $aggregate <= 9) {
+                return "This is a very strong result. Congratulations on your achievement.";
+            } elseif ($aggregate >= 10 && $aggregate <= 12) {
+                return "Well done on achieving Division One. Keep working hard.";
+            } elseif ($aggregate >= 13 && $aggregate <= 16) {
+                return "This is a commendable performance in Division Two. Continue to aim higher.";
+            } elseif ($aggregate >= 17 && $aggregate <= 24) {
+                return "There is potential here. With consistent effort, you can achieve more.";
+            } elseif ($aggregate >= 25 && $aggregate <= 29) {
+                return "More effort is required to improve your results. We encourage you to persevere.";
+            } elseif ($aggregate >= 30 && $aggregate <= 34) {
+                return "Significant improvement is needed. Please focus and work diligently next term.";
+            } elseif ($aggregate >= 35) { // Covers 35-36 and above (Division U or higher aggregates)
+                return "Your results show a need for serious improvement. Please commit to your studies.";
+            } else { // Should not be reached if aggregate is always >= 4 for graded students, but as a fallback.
+                $division = $performanceData['p4p7_division'] ?? 'X'; // Use division for X case
+                 if ($division === 'X') {
+                    return "Exams are important. The school expects you to try your best in all school work.";
+                }
+                return "The school encourages you to focus on your studies for better results."; // Generic fallback
             }
         } else { // P1-P3
             $average = $performanceData['p1p3_average_eot_score'] ?? 0;
