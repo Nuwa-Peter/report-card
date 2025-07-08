@@ -163,7 +163,7 @@ $teacherInitials = $teacherInitials ?? ($_SESSION['current_teacher_initials'] ??
         .remarks-section .signature-line { margin-top: 2mm; border-top: 1px solid #000; width: 45mm; padding-top:0.5mm; font-size:9pt; text-align: center; } /* Reduced margin-top */
         .term-dates { font-size: 11pt; margin-top: 2.5mm; margin-bottom: 2.5mm; text-align: center; border-top: 1px dashed #ccc; border-bottom: 1px dashed #ccc; padding: 1mm 0;} /* Reduced font size from 12pt */
         .term-dates strong {font-weight:bold;}
-        .additional-note-p4p7 { font-size: 10pt; margin-top: 1.5mm; margin-bottom: 1.5mm; text-align: center; font-style: italic; } /* Reduced font-size and margins */
+        /* .additional-note-p4p7 { font-size: 10pt; margin-top: 1.5mm; margin-bottom: 1.5mm; text-align: center; font-style: italic; } */ /* This line is now removed */
         .grading-scale-section-p4p7 {
             margin-top: 1.5mm; /* Reduced margin-top */
             font-size: 7.5pt;
@@ -365,7 +365,6 @@ $teacherInitials = $teacherInitials ?? ($_SESSION['current_teacher_initials'] ??
                 <?php endforeach; ?>
             </div>
         </div>
-        <div class="additional-note-p4p7">Additional Note: Please ensure regular attendance and parental support for optimal performance.</div>
         <?php endif; ?>
         </div> <!-- end .report-body-content -->
         <div class="footer"><i>Good Christian, Good Citizen</i></div>
