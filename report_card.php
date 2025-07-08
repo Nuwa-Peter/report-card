@@ -91,9 +91,9 @@ $teacherInitials = $teacherInitials ?? ($_SESSION['current_teacher_initials'] ??
         .report-card-container {
             width: 190mm;
             /* min-height: 275mm; */ /* Removed */
-            height: 261mm; /* Added fixed height */
-            margin: 10mm auto;
-            padding: 10mm; /* Adjusted padding back to 10mm */
+        /* height: 261mm; */ /* Removed fixed height to allow content to dictate height */
+            margin: 2mm auto 10mm auto; /* Reduced top margin to 2mm, bottom 10mm, auto L/R */
+            padding: 2mm 10mm 10mm 10mm; /* Reduced top padding to 2mm, others remain 10mm */
             background-color: white;
             position: relative;
             box-sizing: border-box;
@@ -105,7 +105,7 @@ $teacherInitials = $teacherInitials ?? ($_SESSION['current_teacher_initials'] ??
         .header { text-align: center; margin-bottom: 2.5mm; margin-top: 0; } /* Reduced margin-bottom */
         .header .school-name { font-size: 20pt; font-weight: bold; margin: 0; color: #000; letter-spacing: 0.5px; }
         .header .logo-container { margin-top: 1mm; margin-bottom: 1mm; } /* Reduced margins */
-        .header .logo-container img { width: 40px; height: 40px; object-fit: contain; } /* Further reduced size */
+        /* .header .logo-container img { width: 20px !important; height: 20px !important; object-fit: contain; } */ /* Commented out, will use inline style */
         .header .school-details { font-size: 8pt; margin: 0.25mm 0; color: #000; }
         .header .report-title { font-size: 16pt; font-weight: bold; margin-top: 2mm; text-transform: uppercase; color: #000; letter-spacing: 1px; }
         .student-details-block { margin-bottom: 2.5mm; }
@@ -157,10 +157,55 @@ $teacherInitials = $teacherInitials ?? ($_SESSION['current_teacher_initials'] ??
         .results-table .summary-row td { background-color: #f8f9fa; font-weight: bold; }
         .p1p3-performance-summary-after-table { margin-top: 2mm; margin-bottom: 2mm; font-size: 8.5pt; border: 1px solid #eaeaea; padding: 1mm; background-color: #f9f9f9; text-align:center; }
         .remarks-section { margin-top: 1.5mm; font-size: 9pt;} /* Reduced margin-top */
-        .remarks-section .remark-block { margin-bottom: 2mm; padding: 1mm; border: 1px solid #ddd; min-height: 15mm; } /* Reduced padding */
+        .remarks-section {
+            /* display: flex; Removed to allow blocks to stack vertically */
+            /* justify-content: space-between; Removed */
+            /* align-items: flex-start; Removed */
+            margin-top: 1.5mm; /* Keep existing margin-top from original remarks-section */
+        }
+        .remarks-section .remark-block {
+            width: 100%; /* Make each remark block take full width */
+            padding: 1mm; /* Keep padding */
+            border: 1px solid #ddd; /* Keep border */
+            min-height: 15mm; /* Keep existing min-height */
+            margin-bottom: 3mm; /* Add some margin between the full-width blocks */
+            display: flex; /* Added to allow vertical stacking of text and signature */
+            flex-direction: column; /* Stack children vertically */
+            /* justify-content: space-between; Pushes signature to bottom if remark is short - We'll control space differently now */
+        }
         .remarks-section strong { display: block; margin-bottom: 0.5mm; font-weight: bold; font-size: 10pt; }
-        .remarks-section p { margin: 0 0 1mm 0; line-height: 1.25; font-size: 10pt; }
-        .remarks-section .signature-line { margin-top: 2mm; border-top: 1px solid #000; width: 45mm; padding-top:0.5mm; font-size:9pt; text-align: center; } /* Reduced margin-top */
+        .remarks-section p {
+            margin: 0 0 1mm 0; /* Keep existing horizontal margins */
+            line-height: 1.25;
+            font-size: 10pt;
+            flex-grow: 1; /* Allows paragraph to take available space if remarks are short */
+            margin-bottom: 8mm; /* Added more space between remark text and signature line */
+            white-space: nowrap; /* Prevent text from wrapping to the next line */
+            overflow: hidden; /* Hide the overflowing text */
+            text-overflow: ellipsis; /* Add an ellipsis (...) to indicate truncated text */
+        }
+
+        .remarks-section .signature-area { /* Renamed from .signature-line, now a container */
+            /* No border or padding here directly, it's just a container now */
+            /* margin-top: auto; /* This can remain if .remark-block is flex and we want to push it down, but margin on <p> is primary */
+            /* align-self: flex-start; /* Ensure it aligns to the left if .remark-block has align-items center */
+        }
+
+        .remarks-section .horizontal-line {
+            width: 40%;
+            border-top: 1px solid #000;
+            margin-bottom: 1mm; /* Space between line and text below */
+            /* Aligns left by default as a block element */
+        }
+
+        .remarks-section .signature-text {
+            font-size: 9pt;
+            text-align: left; /* Explicitly left align text */
+            /* padding-left: 0; /* Ensure no unintended indent if needed */
+        }
+
+        /* Removed CSS for .signature-section, .signature-line-left, .signature-line-right */
+        /* The old .remarks-section .signature-line rule is effectively replaced by .signature-area, .horizontal-line, and .signature-text */
         .term-dates { font-size: 11pt; margin-top: 2.5mm; margin-bottom: 2.5mm; text-align: center; border-top: 1px dashed #ccc; border-bottom: 1px dashed #ccc; padding: 1mm 0;} /* Reduced font size from 12pt */
         .term-dates strong {font-weight:bold;}
         /* .additional-note-p4p7 { font-size: 10pt; margin-top: 1.5mm; margin-bottom: 1.5mm; text-align: center; font-style: italic; } */ /* This line is now removed */
@@ -212,7 +257,7 @@ $teacherInitials = $teacherInitials ?? ($_SESSION['current_teacher_initials'] ??
         <!-- Ensure no img tag for watermark is here -->
         <div class="header">
             <div class="school-name"><?php echo htmlspecialchars("MARIA OW'EMBABAZI PRIMARY SCHOOL"); ?></div>
-            <div class="logo-container"><img src="images/logo.png" alt="School Logo" onerror="this.style.display='none';"></div>
+            <div class="logo-container"><img src="images/logo.png" alt="School Logo" style="width: 35px !important; height: 35px !important; object-fit: contain;" onerror="this.style.display='none';"></div>
             <div class="school-details">P.O BOX 406, MBARARA</div>
             <div class="school-details">Tel. 0700172858 | Email: houseofnazareth.schools@gmail.com</div>
             <div class="report-title">TERMLY ACADEMIC REPORT</div>
@@ -224,8 +269,9 @@ $teacherInitials = $teacherInitials ?? ($_SESSION['current_teacher_initials'] ??
                 <strong>CLASS:</strong> <span><?php echo $className; ?></span>
                 <strong>YEAR:</strong> <span><?php echo $yearName; ?></span>
                 <strong>TERM:</strong> <span><?php echo $termName; ?></span>
+                <strong>LIN:</strong> <span><?php echo $linNo; ?></span>
             </div>
-            <div class="lin-number-display"><strong>LIN:</strong> <?php echo $linNo; ?></div>
+            <?php /* <div class="lin-number-display"><strong>LIN:</strong> <?php echo $linNo; ?></div> */ ?>
         </div>
 
         <?php if ($isP4_P7): ?>
@@ -349,8 +395,20 @@ $teacherInitials = $teacherInitials ?? ($_SESSION['current_teacher_initials'] ??
         <?php /* P1-P3 post-table summary div removed as requested */ ?>
 
         <div class="remarks-section">
-            <div class="remark-block"><strong>Class Teacher's Remarks:</strong><p><?php echo $classTeacherRemark; ?></p><div class="signature-line">Class Teacher's Signature</div></div>
-            <div class="remark-block"><strong>Head Teacher's Remarks:</strong><p><?php echo $headTeacherRemark; ?></p><div class="signature-line">Head Teacher's Signature & Stamp</div></div>
+            <div class="remark-block">
+                <strong>Class Teacher's Remarks:</strong><p><?php echo $classTeacherRemark; ?></p>
+                <div class="signature-area">
+                    <div class="horizontal-line"></div>
+                    <div class="signature-text">Class Teacher's Signature</div>
+                </div>
+            </div>
+            <div class="remark-block">
+                <strong>Head Teacher's Remarks:</strong><p><?php echo $headTeacherRemark; ?></p>
+                <div class="signature-area">
+                    <div class="horizontal-line"></div>
+                    <div class="signature-text">Head Teacher's Signature & Stamp</div>
+                </div>
+            </div>
         </div>
         <div class="term-dates">
             This Term Ended On: <strong><?php echo $termEndDateFormatted; ?></strong> &nbsp; | &nbsp;

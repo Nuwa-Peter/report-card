@@ -86,7 +86,7 @@ try {
     ]);
 
     // --- Watermark Settings ---
-    $mpdf->SetWatermarkImage('images/logo.png', 0.06, 45, 'F'); // Opacity set to 0.06, Size set to 45mm width
+    $mpdf->SetWatermarkImage('images/logo.png', 0.04, 45, 'F'); // Opacity set to 0.04 (was 0.06), Size set to 45mm width
     $mpdf->showWatermarkImage = true;
     // $mpdf->watermarkImageBehind = true; // This line was removed as it caused an error
 
