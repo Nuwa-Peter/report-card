@@ -185,23 +185,25 @@ $teacherInitials = $teacherInitials ?? ($_SESSION['current_teacher_initials'] ??
             text-overflow: ellipsis; /* Add an ellipsis (...) to indicate truncated text */
         }
 
-        .remarks-section .signature-area { /* Renamed from .signature-line, now a container */
-            /* No border or padding here directly, it's just a container now */
+        .remarks-section .signature-area { /* Reverted: Now a simple block container for left alignment */
+            /* display: flex !important; Removed */
+            /* flex-direction: column !important; Removed */
+            /* align-items: flex-end !important; Removed */
             /* margin-top: auto; /* This can remain if .remark-block is flex and we want to push it down, but margin on <p> is primary */
-            /* align-self: flex-start; /* Ensure it aligns to the left if .remark-block has align-items center */
         }
 
         .remarks-section .horizontal-line {
-            width: 40%;
+            width: 40%; /* Stays 40% */
             border-top: 1px solid #000;
             margin-bottom: 1mm; /* Space between line and text below */
-            /* Aligns left by default as a block element */
+            /* Default block behavior will make it left-aligned */
         }
 
         .remarks-section .signature-text {
             font-size: 9pt;
-            text-align: left; /* Explicitly left align text */
-            /* padding-left: 0; /* Ensure no unintended indent if needed */
+            text-align: center; /* Text centered within its own 40% block */
+            width: 40%;       /* Text block is 40% wide, matching the line */
+             /* Default block behavior will make it left-aligned */
         }
 
         /* Removed CSS for .signature-section, .signature-line-left, .signature-line-right */
