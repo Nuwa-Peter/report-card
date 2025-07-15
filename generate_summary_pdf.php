@@ -71,7 +71,7 @@ if ($isP4_P7 && $batch_id) {
         foreach ($coreSubjectKeysP4_P7 as $coreSubKey) {
             $gradeSummaryP4P7[$coreSubKey] = ['D1'=>0, 'D2'=>0, 'C3'=>0, 'C4'=>0, 'C5'=>0, 'C6'=>0, 'P7'=>0, 'P8'=>0, 'F9'=>0, 'N/A'=>0];
             foreach ($enrichedStudentDataForBatch as $studentEnriched) {
-                 $eotGrade = $studentEnriched['subjects'][$coreSubKey]['eot_grade'] ?? 'N/A';
+                 $eotGrade = $studentEnriched['subjects'][$coreSubKey]['eot_grade'] ?? '-';
                  if(isset($gradeSummaryP4P7[$coreSubKey][$eotGrade])) { $gradeSummaryP4P7[$coreSubKey][$eotGrade]++; }
                  else { $gradeSummaryP4P7[$coreSubKey]['N/A']++; }
             }
@@ -91,7 +91,7 @@ if ($isP1_P3 && $batch_id) {
         foreach ($expectedSubjectKeysForClass as $subjectKey) {
             $p1p3SubjectScoreDistribution[$subjectKey] = $scoreBands;
             foreach ($enrichedStudentDataForBatch as $studentEnrichedData) {
-                $eotScore = $studentEnrichedData['subjects'][$subjectKey]['eot_score'] ?? 'N/A';
+                $eotScore = $studentEnrichedData['subjects'][$subjectKey]['eot_score'] ?? '-';
                 $band = 'N/A';
                 if (is_numeric($eotScore)) {
                     $eotScoreNum = (float)$eotScore;
@@ -170,13 +170,13 @@ if ($isP4_P7) {
             $html .= '<tr><td>' . $rowNum . '</td><td class="student-name">' . htmlspecialchars($student['student_name']) . '</td>';
             foreach ($expectedSubjectKeysForClass as $subjKey) {
                 $s_data = $enrichedStudentDataForBatch[$student['student_id']]['subjects'][$subjKey] ?? [];
-                $bot = $s_data['bot_score'] ?? 'N/A'; $mot = $s_data['mot_score'] ?? 'N/A'; $eot = $s_data['eot_score'] ?? 'N/A';
+                $bot = $s_data['bot_score'] ?? '-'; $mot = $s_data['mot_score'] ?? '-'; $eot = $s_data['eot_score'] ?? '-';
                 $html .= '<td>' . htmlspecialchars(is_numeric($bot) ? round((float)$bot) : $bot) . '</td>';
                 $html .= '<td>' . htmlspecialchars(is_numeric($mot) ? round((float)$mot) : $mot) . '</td>';
                 $html .= '<td>' . htmlspecialchars(is_numeric($eot) ? round((float)$eot) : $eot) . '</td>';
             }
-            $html .= '<td>' . htmlspecialchars($student['p4p7_aggregate_points'] ?? 'N/A') . '</td>';
-            $html .= '<td>' . htmlspecialchars($student['p4p7_division'] ?? 'N/A') . '</td></tr>';
+            $html .= '<td>' . htmlspecialchars($student['p4p7_aggregate_points'] ?? '-') . '</td>';
+            $html .= '<td>' . htmlspecialchars($student['p4p7_division'] ?? '-') . '</td></tr>';
         }
     } else { $html .= '<tr><td colspan="' . (2 + count($expectedSubjectKeysForClass) * 3 + 2) . '">No student summary data.</td></tr>'; }
     $html .= '</tbody></table></div>';
@@ -215,14 +215,14 @@ if ($isP4_P7) {
             $html .= '<tr><td>' . $rowNum . '</td><td class="student-name">' . htmlspecialchars($student['student_name']) . '</td>';
             foreach ($expectedSubjectKeysForClass as $subjKey) { // $expectedSubjectKeysForClass is $p1p3SubjectKeys here
                 $s_data = $enrichedStudentDataForBatch[$student['student_id']]['subjects'][$subjKey] ?? [];
-                $bot = $s_data['bot_score'] ?? 'N/A'; $mot = $s_data['mot_score'] ?? 'N/A'; $eot = $s_data['eot_score'] ?? 'N/A';
+                $bot = $s_data['bot_score'] ?? '-'; $mot = $s_data['mot_score'] ?? '-'; $eot = $s_data['eot_score'] ?? '-';
                 $html .= '<td>' . htmlspecialchars(is_numeric($bot) ? round((float)$bot) : $bot) . '</td>';
                 $html .= '<td>' . htmlspecialchars(is_numeric($mot) ? round((float)$mot) : $mot) . '</td>';
                 $html .= '<td>' . htmlspecialchars(is_numeric($eot) ? round((float)$eot) : $eot) . '</td>';
             }
-            $html .= '<td>' . htmlspecialchars($student['p1p3_total_eot_score'] ?? 'N/A') . '</td>';
-            $html .= '<td>' . htmlspecialchars($student['p1p3_average_eot_score'] ?? 'N/A') . '</td>';
-            $html .= '<td>' . htmlspecialchars($student['p1p3_position_in_class'] ?? 'N/A') . '</td></tr>';
+            $html .= '<td>' . htmlspecialchars($student['p1p3_total_eot_score'] ?? '-') . '</td>';
+            $html .= '<td>' . htmlspecialchars($student['p1p3_average_eot_score'] ?? '-') . '</td>';
+            $html .= '<td>' . htmlspecialchars($student['p1p3_position_in_class'] ?? '-') . '</td></tr>';
         }
     } else { $html .= '<tr><td colspan="' . (2 + count($expectedSubjectKeysForClass) * 3 + 3) . '">No student summary data.</td></tr>'; }
     $html .= '</tbody></table></div>';

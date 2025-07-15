@@ -29,35 +29,35 @@ if (!$batchSettingsData || !$studentSummaryData) {
 }
 
 // --- Prepare variables for the template ---
-$studentName = strtoupper(htmlspecialchars($studentSummaryData['student_name'] ?? 'N/A'));
+$studentName = strtoupper(htmlspecialchars($studentSummaryData['student_name'] ?? '-'));
 $linNo = htmlspecialchars($studentSummaryData['lin_no'] ?? '');
-$className = htmlspecialchars($batchSettingsData['class_name'] ?? 'N/A');
-$yearName = htmlspecialchars($batchSettingsData['year_name'] ?? 'N/A');
-$termName = htmlspecialchars($batchSettingsData['term_name'] ?? 'N/A');
-$termEndDateFormatted = isset($batchSettingsData['term_end_date']) ? htmlspecialchars(date('d F Y', strtotime($batchSettingsData['term_end_date']))) : 'N/A';
-$nextTermBeginDateFormatted = isset($batchSettingsData['next_term_begin_date']) ? htmlspecialchars(date('d F Y', strtotime($batchSettingsData['next_term_begin_date']))) : 'N/A';
-$classTeacherRemark = nl2br(htmlspecialchars($studentSummaryData['auto_classteachers_remark_text'] ?? 'N/A'));
-$headTeacherRemark = nl2br(htmlspecialchars($studentSummaryData['auto_headteachers_remark_text'] ?? 'N/A'));
+$className = htmlspecialchars($batchSettingsData['class_name'] ?? '-');
+$yearName = htmlspecialchars($batchSettingsData['year_name'] ?? '-');
+$termName = htmlspecialchars($batchSettingsData['term_name'] ?? '-');
+$termEndDateFormatted = isset($batchSettingsData['term_end_date']) ? htmlspecialchars(date('d F Y', strtotime($batchSettingsData['term_end_date']))) : '-';
+$nextTermBeginDateFormatted = isset($batchSettingsData['next_term_begin_date']) ? htmlspecialchars(date('d F Y', strtotime($batchSettingsData['next_term_begin_date']))) : '-';
+$classTeacherRemark = nl2br(htmlspecialchars($studentSummaryData['auto_classteachers_remark_text'] ?? '-'));
+$headTeacherRemark = nl2br(htmlspecialchars($studentSummaryData['auto_headteachers_remark_text'] ?? '-'));
 
 $isP1_P3 = in_array($className, ['P1', 'P2', 'P3']);
 $isP4_P7 = in_array($className, ['P4', 'P5', 'P6', 'P7']);
 
-$p4p7Aggregate = htmlspecialchars($studentSummaryData['p4p7_aggregate_points'] ?? 'N/A');
-$p4p7Division = htmlspecialchars($studentSummaryData['p4p7_division'] ?? 'N/A'); // Roman numeral
+$p4p7Aggregate = htmlspecialchars($studentSummaryData['p4p7_aggregate_points'] ?? '-');
+$p4p7Division = htmlspecialchars($studentSummaryData['p4p7_division'] ?? '-'); // Roman numeral
 
-$p1p3TotalEOT = htmlspecialchars($studentSummaryData['p1p3_total_eot_score'] ?? 'N/A');
-$p1p3AverageEOT = htmlspecialchars($studentSummaryData['p1p3_average_eot_score'] ?? 'N/A'); // This is Overall Average EOT
-$p1p3PositionBasedOnAvgEOT = htmlspecialchars($studentSummaryData['p1p3_position_in_class'] ?? 'N/A');
+$p1p3TotalEOT = htmlspecialchars($studentSummaryData['p1p3_total_eot_score'] ?? '-');
+$p1p3AverageEOT = htmlspecialchars($studentSummaryData['p1p3_average_eot_score'] ?? '-'); // This is Overall Average EOT
+$p1p3PositionBasedOnAvgEOT = htmlspecialchars($studentSummaryData['p1p3_position_in_class'] ?? '-');
 $totalStudentsInClassForP1P3 = htmlspecialchars($studentSummaryData['p1p3_total_students_in_class'] ?? 0);
 
 // New P1-P3 fields for the new summary rows in the table
-$p1p3OverallAverageBot = htmlspecialchars($studentSummaryData['p1p3_average_bot_score'] ?? 'N/A');
-$p1p3OverallAverageMot = htmlspecialchars($studentSummaryData['p1p3_average_mot_score'] ?? 'N/A');
+$p1p3OverallAverageBot = htmlspecialchars($studentSummaryData['p1p3_average_bot_score'] ?? '-');
+$p1p3OverallAverageMot = htmlspecialchars($studentSummaryData['p1p3_average_mot_score'] ?? '-');
 // $p1p3AverageEOT is already defined above for the overall EOT average.
 
-$p1p3PositionTotalBot = htmlspecialchars($studentSummaryData['p1p3_position_total_bot'] ?? 'N/A');
-$p1p3PositionTotalMot = htmlspecialchars($studentSummaryData['p1p3_position_total_mot'] ?? 'N/A');
-$p1p3PositionTotalEot = htmlspecialchars($studentSummaryData['p1p3_position_total_eot'] ?? 'N/A');
+$p1p3PositionTotalBot = htmlspecialchars($studentSummaryData['p1p3_position_total_bot'] ?? '-');
+$p1p3PositionTotalMot = htmlspecialchars($studentSummaryData['p1p3_position_total_mot'] ?? '-');
+$p1p3PositionTotalEot = htmlspecialchars($studentSummaryData['p1p3_position_total_eot'] ?? '-');
 
 
 $subjectsToDisplayInTable = $currentStudentEnrichedData['subjects'] ?? [];
@@ -310,21 +310,21 @@ $teacherInitials = $teacherInitials ?? ($_SESSION['current_teacher_initials'] ??
                         $subjDisplayName = htmlspecialchars(
                             isset($subjectDisplayNames[$subjectKey]) ? $subjectDisplayNames[$subjectKey] : ($subjectPerformance['subject_name_full'] ?? ucfirst($subjectKey))
                         );
-                        $initialsForSubj = htmlspecialchars($teacherInitials[$subjectKey] ?? 'N/A');
+                        $initialsForSubj = htmlspecialchars($teacherInitials[$subjectKey] ?? '-');
 
-                        $bot_grade = htmlspecialchars($subjectPerformance['bot_grade'] ?? 'N/A');
-                        $mot_grade = htmlspecialchars($subjectPerformance['mot_grade'] ?? 'N/A');
-                        $eot_grade = htmlspecialchars($subjectPerformance['eot_grade'] ?? 'N/A');
-                        $subject_term_average = htmlspecialchars($subjectPerformance['subject_term_average'] ?? 'N/A');
-                        $eot_remark = htmlspecialchars($subjectPerformance['eot_remark'] ?? 'N/A');
+                        $bot_grade = htmlspecialchars($subjectPerformance['bot_grade'] ?? '-');
+                        $mot_grade = htmlspecialchars($subjectPerformance['mot_grade'] ?? '-');
+                        $eot_grade = htmlspecialchars($subjectPerformance['eot_grade'] ?? '-');
+                        $subject_term_average = htmlspecialchars($subjectPerformance['subject_term_average'] ?? '-');
+                        $eot_remark = htmlspecialchars($subjectPerformance['eot_remark'] ?? '-');
                     ?>
                     <tr>
                         <td class="subject-name"><?php echo $subjDisplayName; ?></td>
-                        <td><?php $bs = $subjectPerformance['bot_score'] ?? 'N/A'; echo htmlspecialchars(is_numeric($bs) ? round((float)$bs) : $bs); ?></td>
+                        <td><?php $bs = $subjectPerformance['bot_score'] ?? '-'; echo htmlspecialchars(is_numeric($bs) ? round((float)$bs) : $bs); ?></td>
                         <?php if (!$isP1_P3): ?><td><?php echo $bot_grade; ?></td><?php endif; ?>
-                        <td><?php $ms = $subjectPerformance['mot_score'] ?? 'N/A'; echo htmlspecialchars(is_numeric($ms) ? round((float)$ms) : $ms); ?></td>
+                        <td><?php $ms = $subjectPerformance['mot_score'] ?? '-'; echo htmlspecialchars(is_numeric($ms) ? round((float)$ms) : $ms); ?></td>
                         <?php if (!$isP1_P3): ?><td><?php echo $mot_grade; ?></td><?php endif; ?>
-                        <td><?php $es = $subjectPerformance['eot_score'] ?? 'N/A'; echo htmlspecialchars(is_numeric($es) ? round((float)$es) : $es); ?></td>
+                        <td><?php $es = $subjectPerformance['eot_score'] ?? '-'; echo htmlspecialchars(is_numeric($es) ? round((float)$es) : $es); ?></td>
                         <?php if (!$isP1_P3): ?><td><?php echo $eot_grade; ?></td><?php endif; ?>
                         <?php if ($isP1_P3): ?><td><?php echo $subject_term_average; ?></td><?php endif; ?>
                         <td><?php echo $eot_remark; ?></td>
@@ -362,12 +362,12 @@ $teacherInitials = $teacherInitials ?? ($_SESSION['current_teacher_initials'] ??
                         // Placeholder variables for BOT and MOT aggregates and divisions.
                         // These might need to be fetched or made available from the backend.
                         // For EOT, we use existing variables.
-                        $p4p7_aggregate_bot = $studentSummaryData['p4p7_aggregate_bot_score'] ?? 'N/A';
-                        $p4p7_aggregate_mot = $studentSummaryData['p4p7_aggregate_mot_score'] ?? 'N/A';
+                        $p4p7_aggregate_bot = $studentSummaryData['p4p7_aggregate_bot_score'] ?? '-';
+                        $p4p7_aggregate_mot = $studentSummaryData['p4p7_aggregate_mot_score'] ?? '-';
                         // $p4p7Aggregate is already defined for EOT aggregate
 
-                        $p4p7_division_bot = $studentSummaryData['p4p7_division_bot'] ?? 'N/A';
-                        $p4p7_division_mot = $studentSummaryData['p4p7_division_mot'] ?? 'N/A';
+                        $p4p7_division_bot = $studentSummaryData['p4p7_division_bot'] ?? '-';
+                        $p4p7_division_mot = $studentSummaryData['p4p7_division_mot'] ?? '-';
                         // $p4p7Division is already defined for EOT division
                     ?>
                     <tr class="summary-row">
