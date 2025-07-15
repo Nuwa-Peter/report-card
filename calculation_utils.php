@@ -2,9 +2,9 @@
 
 if (!function_exists('getGradeFromScoreUtil')) {
     function getGradeFromScoreUtil($score) {
-        if ($score === null || $score === '' || $score === 'N/A' || !is_numeric($score)) return 'N/A';
+        if ($score === null || $score === '' || $score === 'N/A' || !is_numeric($score)) return '-';
         $score = floatval($score);
-        if ($score > 100 || $score < 0) return 'N/A';
+        if ($score > 100 || $score < 0) return '-';
         if ($score >= 90) return 'D1';
         if ($score >= 80) return 'D2';
         if ($score >= 70) return 'C3';
@@ -25,13 +25,13 @@ if (!function_exists('calculateP4P7_BOT_OverallPerformanceUtil')) {
         $validCoreBOTScoresExist = false;
 
         if (empty($gradingScalePointsMap)) { // Fallback, though caller should provide it.
-            $gradingScalePointsMap = ['D1'=>1, 'D2'=>2, 'C3'=>3, 'C4'=>4, 'C5'=>5, 'C6'=>6, 'P7'=>7, 'P8'=>8, 'F9'=>9, 'N/A'=>0];
+            $gradingScalePointsMap = ['D1'=>1, 'D2'=>2, 'C3'=>3, 'C4'=>4, 'C5'=>5, 'C6'=>6, 'P7'=>7, 'P8'=>8, 'F9'=>9, '-'=>0];
         }
 
         foreach ($coreSubjectKeys as $coreSubKey) {
             $subjectInfo = $studentSubjectsDataWithScores[$coreSubKey] ?? null;
             // Use bot_score for BOT calculations
-            if ($subjectInfo && isset($subjectInfo['bot_score']) && $subjectInfo['bot_score'] !== 'N/A' && is_numeric($subjectInfo['bot_score'])) {
+            if ($subjectInfo && isset($subjectInfo['bot_score']) && $subjectInfo['bot_score'] !== '-' && is_numeric($subjectInfo['bot_score'])) {
                 $validCoreBOTScoresExist = true;
                 $botGrade = getGradeFromScoreUtil($subjectInfo['bot_score']);
                 $aggregatePoints += getPointsFromGradeUtil($botGrade, $gradingScalePointsMap);
@@ -63,13 +63,13 @@ if (!function_exists('calculateP4P7_MOT_OverallPerformanceUtil')) {
         $validCoreMOTScoresExist = false;
 
         if (empty($gradingScalePointsMap)) { // Fallback, though caller should provide it.
-            $gradingScalePointsMap = ['D1'=>1, 'D2'=>2, 'C3'=>3, 'C4'=>4, 'C5'=>5, 'C6'=>6, 'P7'=>7, 'P8'=>8, 'F9'=>9, 'N/A'=>0];
+            $gradingScalePointsMap = ['D1'=>1, 'D2'=>2, 'C3'=>3, 'C4'=>4, 'C5'=>5, 'C6'=>6, 'P7'=>7, 'P8'=>8, 'F9'=>9, '-'=>0];
         }
 
         foreach ($coreSubjectKeys as $coreSubKey) {
             $subjectInfo = $studentSubjectsDataWithScores[$coreSubKey] ?? null;
             // Use mot_score for MOT calculations
-            if ($subjectInfo && isset($subjectInfo['mot_score']) && $subjectInfo['mot_score'] !== 'N/A' && is_numeric($subjectInfo['mot_score'])) {
+            if ($subjectInfo && isset($subjectInfo['mot_score']) && $subjectInfo['mot_score'] !== '-' && is_numeric($subjectInfo['mot_score'])) {
                 $validCoreMOTScoresExist = true;
                 $motGrade = getGradeFromScoreUtil($subjectInfo['mot_score']);
                 $aggregatePoints += getPointsFromGradeUtil($motGrade, $gradingScalePointsMap);
@@ -95,16 +95,16 @@ if (!function_exists('calculateP4P7_MOT_OverallPerformanceUtil')) {
 
 if (!function_exists('getPointsFromGradeUtil')) {
     function getPointsFromGradeUtil($grade, $gradingScalePointsMap) {
-        if ($grade === 'N/A' && !isset($gradingScalePointsMap['N/A'])) return 0;
+        if ($grade === '-' && !isset($gradingScalePointsMap['-'])) return 0;
         return isset($gradingScalePointsMap[$grade]) ? (int)$gradingScalePointsMap[$grade] : 0;
     }
 }
 
 if (!function_exists('getSubjectEOTRemarkUtil')) {
     function getSubjectEOTRemarkUtil($eotScore, $remarksScoreMap) {
-        if ($eotScore === null || $eotScore === '' || $eotScore === 'N/A' || !is_numeric($eotScore)) return 'N/A';
+        if ($eotScore === null || $eotScore === '' || $eotScore === '-' || !is_numeric($eotScore)) return '-';
         $eotScore = floatval($eotScore);
-        if ($eotScore < 0 || $eotScore > 100) return 'N/A';
+        if ($eotScore < 0 || $eotScore > 100) return '-';
         krsort($remarksScoreMap);
         foreach ($remarksScoreMap as $minScore => $remark) {
             if ($eotScore >= $minScore) {
@@ -123,12 +123,12 @@ if (!function_exists('calculateP4P7OverallPerformanceUtil')) {
         $validCoreEOTScoresExist = false;
 
         if (empty($gradingScalePointsMap)) { // Fallback, though caller should provide it.
-            $gradingScalePointsMap = ['D1'=>1, 'D2'=>2, 'C3'=>3, 'C4'=>4, 'C5'=>5, 'C6'=>6, 'P7'=>7, 'P8'=>8, 'F9'=>9, 'N/A'=>0];
+            $gradingScalePointsMap = ['D1'=>1, 'D2'=>2, 'C3'=>3, 'C4'=>4, 'C5'=>5, 'C6'=>6, 'P7'=>7, 'P8'=>8, 'F9'=>9, '-'=>0];
         }
 
         foreach ($coreSubjectKeys as $coreSubKey) {
             $subjectInfo = $studentCoreSubjectsDataWithScores[$coreSubKey] ?? null;
-            if ($subjectInfo && isset($subjectInfo['eot_score']) && $subjectInfo['eot_score'] !== 'N/A' && is_numeric($subjectInfo['eot_score'])) {
+            if ($subjectInfo && isset($subjectInfo['eot_score']) && $subjectInfo['eot_score'] !== '-' && is_numeric($subjectInfo['eot_score'])) {
                 $validCoreEOTScoresExist = true;
                 $eotGrade = getGradeFromScoreUtil($subjectInfo['eot_score']);
                 $aggregatePoints += getPointsFromGradeUtil($eotGrade, $gradingScalePointsMap);
