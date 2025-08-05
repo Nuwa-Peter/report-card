@@ -200,12 +200,33 @@ if (!function_exists('generateClassTeacherRemarkUtil')) {
                 return "Please see your class teacher to discuss your performance."; // Generic fallback
             }
         } else { // P1-P3
-            $average = $performanceData['p1p3_average_eot_score'] ?? 0;
-            if ($average >= 85) return "Excellent work this term! You did wonderfully.";
-            if ($average >= 70) return "Very good job! Keep up the great work.";
-            if ($average >= 60) return "Good effort! Keep trying your best.";
-            if ($average >= 50) return "Nice try. Work a bit harder to do even better.";
-            return "Please try harder next term. Ask for help if you need it.";
+            $position = $performanceData['p1p3_position_in_class'] ?? 0;
+
+            if ($position > 0) {
+                if ($position <= 10) {
+                    return "Excellent work! Keep it up.";
+                } elseif ($position <= 20) {
+                    return "Very good work this term. Your position is impressive.";
+                } elseif ($position <= 30) {
+                    return "Good effort. Push for a better position next term.";
+                } elseif ($position <= 40) {
+                    return "A fair result. More focus can lead to improvement.";
+                } elseif ($position <= 50) {
+                    return "You can do better. Let's work together to improve.";
+                } elseif ($position <= 70) {
+                    return "More effort is needed to improve your position.";
+                } elseif ($position <= 80) {
+                    return "Your position needs improvement. Hard work is key.";
+                } elseif ($position <= 90) {
+                    return "You need to work harder to improve your position.";
+                } elseif ($position <= 100) {
+                    return "Your position is very low. Please work harder.";
+                } else {
+                    return "Much more effort is required in your studies.";
+                }
+            }
+            // Fallback if position is not available
+            return "Your performance this term has been noted. More effort is encouraged for the coming term.";
         }
     }
 }
@@ -240,11 +261,33 @@ if (!function_exists('generateHeadTeacherRemarkUtil')) {
                 return "The school encourages you to focus on your studies for better results."; // Generic fallback
             }
         } else { // P1-P3
-            $average = $performanceData['p1p3_average_eot_score'] ?? 0;
-            if ($average >= 85) return "Wonderful job! The school is very proud of you. Keep it up!";
-            if ($average >= 70) return "Very good work! Keep trying hard and aim higher.";
-            if ($average >= 50) return "Good effort. Keep working hard, you can do even better."; // Covers 50-69
-            return "Please try to improve next term. Working hard in class helps a lot."; // Covers below 50
+            $position = $performanceData['p1p3_position_in_class'] ?? 0;
+
+            if ($position > 0) {
+                if ($position <= 10) {
+                    return "Excellent work, Don't relax.";
+                } elseif ($position <= 20) {
+                    return "A very good result. Keep aiming high.";
+                } elseif ($position <= 30) {
+                    return "A good result. Strive for a better position next term.";
+                } elseif ($position <= 40) {
+                    return "A fair result. The school encourages more focus.";
+                } elseif ($position <= 50) {
+                    return "There is potential for a better result. Keep trying.";
+                } elseif ($position <= 70) {
+                    return "The school encourages you to work for a better position.";
+                } elseif ($position <= 80) {
+                    return "Improvement is needed in your academic work.";
+                } elseif ($position <= 90) {
+                    return "Significant improvement is required in your studies.";
+                } elseif ($position <= 100) {
+                    return "Your performance requires improvement.";
+                } else {
+                    return "Your academic performance needs improvement.";
+                }
+            }
+            // Fallback if position is not available
+            return "The school encourages you to focus on your studies for better results.";
         }
     }
 }
